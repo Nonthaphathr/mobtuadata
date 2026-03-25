@@ -200,7 +200,9 @@ function renderPoloList() {
     const d = window._poloData[s.id];
     const done = d && d.polo && d.pants;
     const payBadge = done ? (d.payStatus === 'paid' ? '<span class="badge badge-paid">💰 จ่ายแล้ว</span>' : d.payStatus === 'later' ? '<span class="badge badge-later">⏳ จ่ายภายหลัง</span>' : '') : '';
-    const qtyBadge = done && d.poloQty ? `<span class="badge badge-info">${d.poloQty} ตัว</span>` : '';
+    const qtyBadge = done && (d.poloShirtQty != null || d.poloPantQty != null || d.poloQty)
+      ? `<span class="badge badge-info">เสื้อ ${d.poloShirtQty ?? d.poloQty ?? 1} / กางเกง ${d.poloPantQty ?? d.poloQty ?? 1}</span>`
+      : '';
     return `<div class="student-card ${done ? 'done' : ''}" onclick="openPoloView('${s.id}')">
       <div class="student-card-left">
         <div class="student-avatar ${done ? 'done' : ''}">${getAvatarChar(s.prefix)}</div>
@@ -239,7 +241,8 @@ window.openPoloView = function(id) {
   pantOtherRow.style.display = (d.pants && !PANT_SIZES.slice(0,-1).includes(d.pants)) ? 'block' : 'none';
   document.getElementById('poloOtherInput').value = (d.polo && !POLO_SIZES.slice(0,-1).includes(d.polo)) ? d.polo : '';
   document.getElementById('pantOtherInput').value = (d.pants && !PANT_SIZES.slice(0,-1).includes(d.pants)) ? d.pants : '';
-  document.getElementById('poloQtyInput').value = d.poloQty || 1;
+  document.getElementById('poloShirtQtyInput').value = d.poloShirtQty ?? d.poloQty ?? 1;
+  document.getElementById('poloPantQtyInput').value  = d.poloPantQty  ?? d.poloQty ?? 1;
   setPoloPayStatus(d.payStatus || '');
   document.getElementById('poloPayNote').value = d.payNote || '';
   togglePoloPayNote();
@@ -264,7 +267,8 @@ window.openPoloModal = function(id, editMode) {
   pantOtherRow.style.display = (d.pants && !PANT_SIZES.slice(0,-1).includes(d.pants)) ? 'block' : 'none';
   document.getElementById('poloOtherInput').value = (d.polo && !POLO_SIZES.slice(0,-1).includes(d.polo)) ? d.polo : '';
   document.getElementById('pantOtherInput').value = (d.pants && !PANT_SIZES.slice(0,-1).includes(d.pants)) ? d.pants : '';
-  document.getElementById('poloQtyInput').value = d.poloQty || 1;
+  document.getElementById('poloShirtQtyInput').value = d.poloShirtQty ?? d.poloQty ?? 1;
+  document.getElementById('poloPantQtyInput').value  = d.poloPantQty  ?? d.poloQty ?? 1;
   setPoloPayStatus(d.payStatus || '');
   document.getElementById('poloPayNote').value = d.payNote || '';
   togglePoloPayNote();
@@ -274,21 +278,25 @@ window.openPoloModal = function(id, editMode) {
 }
 
 window.updatePoloPayCalc = function() {
-  const qty = parseInt(document.getElementById('poloQtyInput').value) || 1;
+  const shirtQty = parseInt(document.getElementById('poloShirtQtyInput').value) || 0;
+  const pantQty  = parseInt(document.getElementById('poloPantQtyInput').value)  || 0;
   const poloPrice = window._settings.poloPrice || 0;
   const pantPrice = window._settings.pantPrice || 0;
-  const total = (poloPrice + pantPrice) * qty;
+  const total = poloPrice * shirtQty + pantPrice * pantQty;
   const el = document.getElementById('poloPayCalcBox');
   if (poloPrice > 0 || pantPrice > 0) {
-    el.style.display = 'block';
-    el.innerHTML = `<span>ราคาต่อชุด: ${poloPrice+pantPrice} บ. × ${qty} ตัว</span><strong>= ${total.toLocaleString()} บาท</strong>`;
+    el.style.display = 'flex';
+    let parts = [];
+    if (poloPrice > 0 && shirtQty > 0) parts.push(`เสื้อ ${poloPrice}×${shirtQty}`);
+    if (pantPrice > 0 && pantQty  > 0) parts.push(`กางเกง ${pantPrice}×${pantQty}`);
+    el.innerHTML = `<span>${parts.join(' + ') || '-'}</span><strong>= ${total.toLocaleString()} บาท</strong>`;
   } else {
     el.style.display = 'none';
   }
 }
 
 window.setPoloEditMode = function(edit) {
-  const fields = ['poloSizeSelect','pantSizeSelect','poloOtherInput','pantOtherInput','poloQtyInput','poloPayNote'];
+  const fields = ['poloSizeSelect','pantSizeSelect','poloOtherInput','pantOtherInput','poloShirtQtyInput','poloPantQtyInput','poloPayNote'];
   fields.forEach(f => { const el = document.getElementById(f); if(el) el.disabled = !edit; });
   document.querySelectorAll('#poloModal .pay-radio-btn').forEach(b => b.style.pointerEvents = edit ? 'auto' : 'none');
   document.getElementById('poloEditBtn').style.display = edit ? 'none' : 'inline-flex';
@@ -328,21 +336,23 @@ window.savePoloData = async function() {
   if (polo === 'อื่นๆ') polo = document.getElementById('poloOtherInput').value.trim() || 'อื่นๆ';
   if (pants === 'อื่นๆ') pants = document.getElementById('pantOtherInput').value.trim() || 'อื่นๆ';
   if (!polo || !pants) { showAlert('warning', 'กรุณาระบุไซซ์', 'โปรดเลือกไซซ์ให้ครบทั้งสองรายการ'); return; }
-  const poloQty = parseInt(document.getElementById('poloQtyInput').value) || 1;
+  const poloShirtQty = parseInt(document.getElementById('poloShirtQtyInput').value) || 0;
+  const poloPantQty  = parseInt(document.getElementById('poloPantQtyInput').value)  || 0;
   const activePayBtn = document.querySelector('#poloModal .pay-radio-btn.active');
   const payStatus = activePayBtn ? activePayBtn.dataset.val : '';
   const payNote = document.getElementById('poloPayNote').value.trim();
   const poloPrice = window._settings.poloPrice || 0;
   const pantPrice = window._settings.pantPrice || 0;
-  const payAmount = (poloPrice + pantPrice) * poloQty;
+  const payAmount = poloPrice * poloShirtQty + pantPrice * poloPantQty;
   showLoading(true);
-  const data = { polo, pants, poloQty, payStatus, payNote, payAmount, updatedAt: new Date().toISOString() };
+  const data = { polo, pants, poloShirtQty, poloPantQty, payStatus, payNote, payAmount, updatedAt: new Date().toISOString() };
   await setDoc(doc(db, 'mobtua_polo', id), data);
   window._poloData[id] = data;
   closePoloModal();
   renderPoloList();
   showLoading(false);
-  showAlert('success', 'บันทึกสำเร็จ', `โปโล: ${polo} | วอร์ม: ${pants} | จำนวน: ${poloQty} ตัว`);
+  const qtySummary = [poloShirtQty > 0 ? `เสื้อ ${poloShirtQty} ตัว` : '', poloPantQty > 0 ? `กางเกง ${poloPantQty} ตัว` : ''].filter(Boolean).join(', ');
+  showAlert('success', 'บันทึกสำเร็จ', `โปโล: ${polo} | วอร์ม: ${pants}${qtySummary ? '\n' + qtySummary : ''}`);
 }
 
 window.deletePoloData = async function() {
@@ -781,14 +791,15 @@ window.deleteStudent = async function(id) {
   });
 }
 
-window.printSummary = function() {
+window.printSummary = function(levelFilter) {
+  const lvlOverride = levelFilter !== undefined ? levelFilter : window._summaryLevel;
   const students = window._students.filter(s => {
     const search = window._summarySearch.toLowerCase();
-    const lvl = window._summaryLevel;
     const match = (s.prefix + s.name + s.surname).toLowerCase().includes(search);
-    const levelMatch = !lvl || s.level === lvl;
+    const levelMatch = !lvlOverride || s.level === lvlOverride;
     return match && levelMatch;
   });
+  const levelLabel = lvlOverride ? ` — ${lvlOverride}` : '';
   const now = new Date().toLocaleString('th-TH', { dateStyle: 'full', timeStyle: 'short' });
   const rows = students.map((s, i) => {
     const polo = window._poloData[s.id];
@@ -832,7 +843,7 @@ window.printSummary = function() {
     @media print { @page { size: A4 landscape; margin: 12mm 10mm; } body { padding: 0; } }
   </style></head><body>
   <div class="print-header">
-    <h1>สรุปข้อมูลวันมอบตัวนักเรียน</h1>
+    <h1>สรุปข้อมูลวันมอบตัวนักเรียน${levelLabel}</h1>
     <p>โรงเรียนกระดุมทองวิทยา | ปีการศึกษา 2569</p>
   </div>
   <div class="print-meta">
@@ -1010,14 +1021,17 @@ window.openMoneySummary = function() {
 
   if (tab === 'polo') {
     title = '👕 ยอดเงินเสื้อโปโล / กางเกงวอร์ม';
-    const pPrice = (window._settings.poloPrice||0) + (window._settings.pantPrice||0);
+    const poloPrice = window._settings.poloPrice || 0;
+    const pantPrice = window._settings.pantPrice || 0;
     window._students.forEach(s => {
       const d = window._poloData[s.id];
       if (!d || d.payStatus !== 'paid') return;
-      const qty = d.poloQty || 1;
-      const amt = d.payAmount || pPrice * qty;
+      const sQty = d.poloShirtQty ?? d.poloQty ?? 1;
+      const pQty = d.poloPantQty  ?? d.poloQty ?? 1;
+      const amt  = d.payAmount || (poloPrice * sQty + pantPrice * pQty);
       const isToday = d.updatedAt && d.updatedAt.slice(0,10) === today;
-      rows.push({ name: s.prefix+s.name+' '+s.surname, level: s.level, detail: qty+' ตัว', amt, isToday });
+      const detailParts = [sQty > 0 ? `เสื้อ ${sQty}` : '', pQty > 0 ? `กางเกง ${pQty}` : ''].filter(Boolean);
+      rows.push({ name: s.prefix+s.name+' '+s.surname, level: s.level, detail: detailParts.join(' / ') || '-', amt, isToday });
       allTotal += amt; if (isToday) todayTotal += amt;
     });
   } else if (tab === 'sports') {
@@ -1115,22 +1129,55 @@ function buildPrintDoc(title, headers, rows) {
   <script>window.onload=()=>window.print()<\/script></body></html>`;
 }
 
-window.printTab = function(tabName) {
-  const students = window._students;
+window.openPrintOptions = function(tabName) {
+  window._printTabName = tabName;
+  const titles = {
+    polo: '👕 พิมพ์รายการโปโล/วอร์ม',
+    sports: '🏃 พิมพ์รายการเสื้อกีฬา',
+    bus: '🚌 พิมพ์รายการรถรับส่ง',
+    coop: '🏦 พิมพ์รายการสหกรณ์',
+    summary: '📊 พิมพ์ตารางสรุป'
+  };
+  document.getElementById('printOptionsTitle').textContent = titles[tabName] || 'พิมพ์';
+  // reset select
+  document.getElementById('printLevelSelect').value = '';
+  document.getElementById('printOptionsModal').style.display = 'flex';
+}
+
+window.closePrintOptions = function() {
+  document.getElementById('printOptionsModal').style.display = 'none';
+}
+
+window.confirmPrint = function() {
+  const tabName = window._printTabName;
+  const levelFilter = document.getElementById('printLevelSelect').value;
+  closePrintOptions();
+  if (tabName === 'summary') { printSummary(levelFilter); return; }
+  printTab(tabName, levelFilter);
+}
+
+window.printTab = function(tabName, levelFilter) {
+  const students = levelFilter
+    ? window._students.filter(s => s.level === levelFilter)
+    : window._students;
+
   let title, headers, rows;
   const payLabel = v => v === 'paid' ? '✓ จ่ายแล้ว' : v === 'later' ? '⏳ ภายหลัง' : '-';
+  const levelLabel = levelFilter ? ` (${levelFilter})` : ' (ทุกระดับชั้น)';
 
   if (tabName === 'polo') {
-    title = 'รายการแจ้งไซซ์เสื้อโปโลและกางเกงวอร์ม';
-    headers = ['ชื่อ-นามสกุล','ชั้น','ไซซ์โปโล','ไซซ์วอร์ม','จำนวน','ชำระ','หมายเหตุ'];
+    title = 'รายการแจ้งไซซ์เสื้อโปโลและกางเกงวอร์ม' + levelLabel;
+    headers = ['ชื่อ-นามสกุล','ชั้น','ไซซ์โปโล','ไซซ์วอร์ม','เสื้อ(ตัว)','กางเกง(ตัว)','ชำระ','หมายเหตุ'];
     rows = students.map(s => {
       const d = window._poloData[s.id];
+      const sQty = d ? (d.poloShirtQty ?? d.poloQty ?? '') : '';
+      const pQty = d ? (d.poloPantQty  ?? d.poloQty ?? '') : '';
       return [s.prefix+s.name+' '+s.surname, s.level,
-        d?d.polo:'', d?d.pants:'', d?(d.poloQty||1)+' ตัว':'',
+        d?d.polo:'', d?d.pants:'', sQty, pQty,
         d?payLabel(d.payStatus):'', d?d.payNote:''];
     });
   } else if (tabName === 'sports') {
-    title = 'รายการแจ้งไซซ์เสื้อกีฬา';
+    title = 'รายการแจ้งไซซ์เสื้อกีฬา' + levelLabel;
     headers = ['ชื่อ-นามสกุล','ชั้น','ไซซ์เสื้อกีฬา','จำนวน','ชำระ','หมายเหตุ'];
     rows = students.map(s => {
       const d = window._sportsData[s.id];
@@ -1139,7 +1186,7 @@ window.printTab = function(tabName) {
         d?payLabel(d.payStatus):'', d?d.payNote:''];
     });
   } else if (tabName === 'bus') {
-    title = 'รายการแจ้งความประสงค์ขึ้นรถรับส่ง';
+    title = 'รายการแจ้งความประสงค์ขึ้นรถรับส่ง' + levelLabel;
     headers = ['ชื่อ-นามสกุล','ชั้น','ขึ้นรถ','หมู่บ้าน/จุดขึ้น'];
     rows = students.map(s => {
       const d = window._busData[s.id];
@@ -1148,7 +1195,7 @@ window.printTab = function(tabName) {
         d&&d.wantBus?d.village:''];
     });
   } else if (tabName === 'coop') {
-    title = 'รายการสมัครสมาชิกสหกรณ์';
+    title = 'รายการสมัครสมาชิกสหกรณ์' + levelLabel;
     headers = ['ชื่อ-นามสกุล','ชั้น','จำนวนหุ้น','ค่าหุ้น','ค่าธรรมเนียม','รวมชำระ'];
     rows = students.map(s => {
       const d = window._coopData[s.id];
@@ -1157,8 +1204,7 @@ window.printTab = function(tabName) {
         d?d.fee+' บ.':'', d?d.grandTotal+' บ.':''];
     });
   } else {
-    // summary - reuse existing printSummary
-    printSummary(); return;
+    printSummary(levelFilter); return;
   }
   const w = window.open('','_blank','width=900,height=700');
   w.document.write(buildPrintDoc(title, headers, rows));
@@ -1292,6 +1338,12 @@ html, body { font-family: 'Sarabun', sans-serif; font-size: 16px; background: li
 .pay-radio-btn.active[data-val="paid"] { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; }
 .pay-radio-btn.active[data-val="later"] { background: #fff8e1; border-color: #ffc107; color: #e65100; }
 
+/* ---- QTY ROW (split polo/pant) ---- */
+.qty-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.qty-item { display: flex; flex-direction: column; gap: 0.3rem; }
+.qty-label { font-size: 0.85rem; font-weight: 700; color: var(--text2); }
+.qty-input { text-align: center; font-size: 1.1rem; font-weight: 700; padding: 0.6rem 0.5rem; }
+
 /* ---- EDIT/VIEW MODE BUTTON ---- */
 .btn-edit-mode { background: #e3f2fd; color: #1565c0; border: none; padding: 0.9rem 1.2rem; border-radius: 50px; font-family: 'Sarabun', sans-serif; font-size: 1.05rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; }
 
@@ -1316,7 +1368,7 @@ html, body { font-family: 'Sarabun', sans-serif; font-size: 16px; background: li
 .form-select:focus, .form-input:focus { border-color: var(--pink1); }
 .other-input-row { margin-top: 0.5rem; }
 .modal-footer { display: flex; gap: 0.8rem; margin-top: 1.5rem; flex-wrap: wrap; }
-.btn-save { flex: 1; background: linear-gradient(135deg, var(--pink1), #ff4d94); color: white; border: none; padding: 0.9rem; border-radius: 50px; font-family: 'Sarabun', sans-serif; font-size: 1.05rem; font-weight: 700; cursor: pointer; }
+.btn-save { flex: 1; background: linear-gradient(135deg, var(--pink1), #ff4d94); color: white; border: none; padding: 0.9rem; border-radius: 50px; font-family: 'Sarabun', sans-serif; font-size: 1.05rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
 .btn-delete { background: #ffebee; color: #c62828; border: none; padding: 0.9rem 1.2rem; border-radius: 50px; font-family: 'Sarabun', sans-serif; font-size: 1.05rem; font-weight: 600; cursor: pointer; }
 .btn-cancel { background: #f5f5f5; color: var(--text2); border: none; padding: 0.9rem 1.2rem; border-radius: 50px; font-family: 'Sarabun', sans-serif; font-size: 1.05rem; cursor: pointer; }
 
@@ -1584,7 +1636,7 @@ datalist option { font-family: 'Sarabun', sans-serif; }
         <option value="ม.1">ม.1</option>
         <option value="ม.4">ม.4</option>
       </select>
-      <button class="btn-action btn-print" onclick="printTab('polo')"><i class="fa fa-print"></i> พิมพ์</button>
+      <button class="btn-action btn-print" onclick="openPrintOptions('polo')"><i class="fa fa-print"></i> พิมพ์</button>
     </div>
     <div id="poloListContainer"></div>
   </div>
@@ -1598,7 +1650,7 @@ datalist option { font-family: 'Sarabun', sans-serif; }
         <option value="ม.1">ม.1</option>
         <option value="ม.4">ม.4</option>
       </select>
-      <button class="btn-action btn-print" onclick="printTab('sports')"><i class="fa fa-print"></i> พิมพ์</button>
+      <button class="btn-action btn-print" onclick="openPrintOptions('sports')"><i class="fa fa-print"></i> พิมพ์</button>
     </div>
     <div id="sportsListContainer"></div>
   </div>
@@ -1612,7 +1664,7 @@ datalist option { font-family: 'Sarabun', sans-serif; }
         <option value="ม.1">ม.1</option>
         <option value="ม.4">ม.4</option>
       </select>
-      <button class="btn-action btn-print" onclick="printTab('bus')"><i class="fa fa-print"></i> พิมพ์</button>
+      <button class="btn-action btn-print" onclick="openPrintOptions('bus')"><i class="fa fa-print"></i> พิมพ์</button>
     </div>
     <datalist id="villageDatalist"></datalist>
     <div id="busListContainer"></div>
@@ -1627,7 +1679,7 @@ datalist option { font-family: 'Sarabun', sans-serif; }
         <option value="ม.1">ม.1</option>
         <option value="ม.4">ม.4</option>
       </select>
-      <button class="btn-action btn-print" onclick="printTab('coop')"><i class="fa fa-print"></i> พิมพ์</button>
+      <button class="btn-action btn-print" onclick="openPrintOptions('coop')"><i class="fa fa-print"></i> พิมพ์</button>
     </div>
     <div id="coopListContainer"></div>
   </div>
@@ -1641,7 +1693,7 @@ datalist option { font-family: 'Sarabun', sans-serif; }
         <option value="ม.1">ม.1</option>
         <option value="ม.4">ม.4</option>
       </select>
-      <button class="btn-action btn-print" onclick="printSummary()"><i class="fa fa-print"></i> พิมพ์</button>
+      <button class="btn-action btn-print" onclick="openPrintOptions('summary')"><i class="fa fa-print"></i> พิมพ์</button>
       <button class="btn-action btn-export" onclick="exportExcel()"><i class="fa fa-file-excel"></i> Excel</button>
     </div>
     <div class="table-wrapper">
@@ -1690,8 +1742,17 @@ datalist option { font-family: 'Sarabun', sans-serif; }
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">🔢 จำนวนชุด (ตัว)</label>
-      <input id="poloQtyInput" class="form-input" type="number" min="1" value="1" oninput="updatePoloPayCalc()">
+      <label class="form-label">🔢 จำนวนที่รับ</label>
+      <div class="qty-row">
+        <div class="qty-item">
+          <span class="qty-label">👕 เสื้อโปโล</span>
+          <input id="poloShirtQtyInput" class="form-input qty-input" type="number" min="0" value="1" oninput="updatePoloPayCalc()">
+        </div>
+        <div class="qty-item">
+          <span class="qty-label">👖 กางเกงวอร์ม</span>
+          <input id="poloPantQtyInput" class="form-input qty-input" type="number" min="0" value="1" oninput="updatePoloPayCalc()">
+        </div>
+      </div>
       <div id="poloPayCalcBox" class="pay-calc-box" style="display:none;"></div>
     </div>
     <div class="form-group">
@@ -1952,6 +2013,29 @@ datalist option { font-family: 'Sarabun', sans-serif; }
     </div>
   </div>
 </div>
+<!-- PRINT OPTIONS MODAL -->
+<div id="printOptionsModal" class="modal-overlay" onclick="if(event.target===this)closePrintOptions()">
+  <div class="modal-box" style="max-width:380px;">
+    <div class="modal-handle"></div>
+    <div class="modal-header" style="margin-bottom:1.2rem;">
+      <div id="printOptionsTitle" class="modal-title" style="font-size:1.1rem;"></div>
+      <button class="modal-close" onclick="closePrintOptions()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">🎓 ระดับชั้น</label>
+      <select id="printLevelSelect" class="form-select">
+        <option value="">📋 ทุกระดับชั้น</option>
+        <option value="ม.1">ม.1 เท่านั้น</option>
+        <option value="ม.4">ม.4 เท่านั้น</option>
+      </select>
+    </div>
+    <div class="modal-footer" style="margin-top:1rem;">
+      <button class="btn-save" onclick="confirmPrint()"><i class="fa fa-print"></i> สั่งพิมพ์</button>
+      <button class="btn-cancel" onclick="closePrintOptions()">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
 <!-- MONEY FAB -->
 <button id="moneyFab" onclick="openMoneySummary()" style="display:none;" title="ดูยอดเงิน">
   <span class="fab-icon">💰</span>
