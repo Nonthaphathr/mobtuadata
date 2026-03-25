@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบบันทึกข้อมูลวันมอบตัวนักเรียน</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Kanit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-dark: #1341b5;
+    --primary-light: #e8f0fe;
+    --accent: #f59e0b;
+    --accent-light: #fef3c7;
+    --success: #10b981;
+    --success-light: #d1fae5;
+    --danger: #ef4444;
+    --purple: #7c3aed;
+    --purple-light: #ede9fe;
+    --teal: #0891b2;
+    --teal-light: #cffafe;
+    --bg: #f0f4ff;
+    --bg-card: #ffffff;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --shadow: 0 4px 24px rgba(26,86,219,0.10);
+    --shadow-lg: 0 8px 40px rgba(26,86,219,0.16);
+    --radius: 18px;
+    --radius-sm: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Sarabun', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ====== LANDING PAGE ====== */
+  #landing {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a56db 0%, #0891b2 50%, #7c3aed 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  #landing::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+    top: -200px; right: -200px;
+  }
+  #landing::after {
+    content: '';
+    position: absolute;
+    width: 400px; height: 400px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 50%;
+    bottom: -100px; left: -100px;
+  }
+  .landing-card {
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(20px);
+    border: 1.5px solid rgba(255,255,255,0.25);
+    border-radius: 28px;
+    padding: 48px 40px;
+    max-width: 520px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    animation: fadeUp 0.7s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(30px); }
+    to { opacity:1; transform: translateY(0); }
+  }
+  .landing-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    display: block;
+  }
+  .landing-title {
+    font-family: 'Kanit', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+  .landing-sub {
+    font-size: 16px;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 8px;
+  }
+  .landing-dev {
+    font-size: 14px;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 32px;
+  }
+  .landing-btn {
+    background: #fff;
+    color: var(--primary);
+    font-family: 'Kanit', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    border: none;
+    border-radius: 50px;
+    padding: 14px 48px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .landing-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+
+  /* ====== MAIN APP ====== */
+  #app { display: none; }
+  .topbar {
+    background: linear-gradient(90deg, #1a56db, #0891b2);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 16px rgba(26,86,219,0.2);
+  }
+  .topbar-title {
+    font-family: 'Kanit', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+  }
+  .topbar-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,0.75);
+    font-weight: 400;
+  }
+  .topbar-logo { font-size: 28px; }
+
+  /* ====== TABS ====== */
+  .tabs-container {
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs-container::-webkit-scrollbar { display: none; }
+  .tabs {
+    display: flex;
+    min-width: max-content;
+    padding: 0 12px;
+  }
+  .tab-btn {
+    font-family: 'Kanit', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 14px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 700;
+  }
+  .tab-btn:hover { color: var(--primary); }
+  .tab-icon { font-size: 16px; }
+
+  /* ====== CONTENT ====== */
+  .content { padding: 20px 16px 100px; max-width: 900px; margin: 0 auto; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ====== SECTION HEADER ====== */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .section-title {
+    font-family: 'Kanit', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ====== STUDENT CARDS ====== */
+  .search-box {
+    position: relative;
+    margin-bottom: 16px;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 12px 16px 12px 42px;
+    border: 1.5px solid var(--border);
+    border-radius: 50px;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 15px;
+    outline: none;
+    transition: border 0.2s;
+    background: #fff;
+  }
+  .search-box input:focus { border-color: var(--primary); }
+  .search-box::before {
+    content: '🔍';
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+  }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .filter-chip {
+    padding: 6px 14px;
+    border-radius: 50px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  .students-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .student-card {
+    background: #fff;
+    border-radius: var(--radius-sm);
+    padding: 16px 12px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    border: 1.5px solid var(--border);
+    transition: all 0.2s;
+    position: relative;
+    animation: fadeUp 0.4s ease;
+  }
+  .student-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
+  }
+  .student-card.filled { border-color: var(--success); }
+  .student-card.filled::after {
+    content: '✓';
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    color: var(--success);
+    font-weight: 800;
+    font-size: 14px;
+  }
+  .student-avatar {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin: 0 auto 10px;
+  }
+  .student-avatar.m { background: #dbeafe; }
+  .student-avatar.f { background: #fce7f3; }
+  .student-name {
+    font-family: 'Kanit', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .student-class {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+  .no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-size: 16px;
+  }
+  .no-data .emoji { font-size: 48px; display: block; margin-bottom: 12px; }
+
+  /* ====== IMPORT SECTION ====== */
+  .import-section {
+    background: var(--primary-light);
+    border: 2px dashed var(--primary);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .import-section h3 {
+    font-family: 'Kanit', sans-serif;
+    font-size: 16px;
+    color: var(--primary);
+    margin-bottom: 8px;
+  }
+  .import-section p { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  .import-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  /* ====== BUTTONS ====== */
+  .btn {
+    font-family: 'Kanit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { background: #059669; }
+  .btn-outline { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); }
+  .btn-outline:hover { background: var(--primary-light); }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-accent:hover { background: #d97706; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 7px 14px; font-size: 13px; }
+  .btn-lg { padding: 14px 32px; font-size: 16px; width: 100%; justify-content: center; }
+
+  /* ====== MODAL ====== */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: flex-end;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 24px 24px 0 0;
+    padding: 28px 24px 36px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+  }
+  @media (min-width: 600px) {
+    .modal-overlay { align-items: center; }
+    .modal { border-radius: 24px; max-height: 85vh; }
+  }
+  @keyframes slideUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .modal-title {
+    font-family: 'Kanit', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .modal-close {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .student-info-box {
+    background: var(--primary-light);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .student-info-box .avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .student-info-box .name {
+    font-family: 'Kanit', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .student-info-box .class { font-size: 13px; color: var(--text-muted); }
+
+  /* ====== FORM ====== */
+  .form-group { margin-bottom: 18px; }
+  .form-label {
+    font-family: 'Kanit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    display: block;
+  }
+  .form-select, .form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'Sarabun', sans-serif;
+    font-size: 15px;
+    outline: none;
+    transition: border 0.2s;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .form-select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 38px; }
+  .form-select:focus, .form-input:focus { border-color: var(--primary); }
+
+  .checkbox-group { display: flex; align-items: center; gap: 12px; padding: 14px; background: var(--bg); border-radius: var(--radius-sm); }
+  .checkbox-group input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--primary); cursor: pointer; }
+  .checkbox-group label { font-size: 16px; font-weight: 600; cursor: pointer; }
+
+  .amount-display {
+    background: linear-gradient(135deg, #1a56db, #0891b2);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    margin: 16px 0;
+    text-align: center;
+  }
+  .amount-display .label { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
+  .amount-display .amount { font-family: 'Kanit', sans-serif; font-size: 28px; font-weight: 800; }
+
+  /* ====== DATALIST ====== */
+  input[list]::-webkit-calendar-picker-indicator { opacity: 0; }
+
+  /* ====== ADD STUDENT MANUAL ====== */
+  .add-student-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--bg);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'Kanit', sans-serif;
+    font-size: 15px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .add-student-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+  /* ====== SUMMARY TABLE ====== */
+  .summary-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .summary-controls input, .summary-controls select {
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 50px;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 14px;
+    outline: none;
+    background: #fff;
+    min-width: 140px;
+  }
+  .summary-controls input:focus, .summary-controls select:focus { border-color: var(--primary); }
+  .table-wrap { overflow-x: auto; border-radius: var(--radius-sm); box-shadow: var(--shadow); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    min-width: 700px;
+  }
+  th {
+    background: var(--primary);
+    color: #fff;
+    font-family: 'Kanit', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 12px 10px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  td {
+    padding: 11px 10px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: var(--bg); }
+  .badge {
+    padding: 3px 10px;
+    border-radius: 50px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+  }
+  .badge-yes { background: var(--success-light); color: #065f46; }
+  .badge-no { background: #fee2e2; color: #991b1b; }
+
+  /* ====== STATS CARDS ====== */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: #fff;
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    text-align: center;
+  }
+  .stat-card .stat-num {
+    font-family: 'Kanit', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--primary);
+  }
+  .stat-card .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ====== LOADING ====== */
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+    font-size: 16px;
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ====== RESPONSIVE ====== */
+  @media (max-width: 480px) {
+    .students-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .student-card { padding: 12px 8px; }
+    .student-name { font-size: 12px; }
+    .content { padding: 16px 12px 80px; }
+    .landing-card { padding: 36px 24px; }
+    .landing-title { font-size: 22px; }
+  }
+
+  /* ====== PRINT ====== */
+  @media print {
+    .topbar, .tabs-container, .no-print { display: none !important; }
+    .tab-pane { display: block !important; }
+    #tab-summary { display: block !important; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LANDING PAGE -->
+<div id="landing">
+  <div class="landing-card">
+    <span class="landing-icon">🏫</span>
+    <div class="landing-title">ระบบบันทึกข้อมูล<br>วันมอบตัวนักเรียน</div>
+    <div class="landing-sub">ชั้น ม.1 และ ม.4</div>
+    <div class="landing-dev">พัฒนาโดย ครูนนทพัทธ์ หิรัญเรือง</div>
+    <button class="landing-btn" onclick="enterApp()">🚀 เข้าสู่ระบบ</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">🏫 ระบบบันทึกข้อมูลวันมอบตัว</div>
+      <div class="topbar-sub">พัฒนาโดย ครูนนทพัทธ์ หิรัญเรือง</div>
+    </div>
+    <span class="topbar-logo">📋</span>
+  </div>
+
+  <div class="tabs-container">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('polo')"><span class="tab-icon">👕</span>เสื้อโปโล/วอร์ม</button>
+      <button class="tab-btn" onclick="switchTab('sport')"><span class="tab-icon">🏃</span>เสื้อกีฬา</button>
+      <button class="tab-btn" onclick="switchTab('bus')"><span class="tab-icon">🚌</span>รถรับส่ง</button>
+      <button class="tab-btn" onclick="switchTab('coop')"><span class="tab-icon">🏦</span>สหกรณ์</button>
+      <button class="tab-btn" onclick="switchTab('summary')"><span class="tab-icon">📊</span>สรุปข้อมูล</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- TAB 1: Polo & Warm Pant -->
+    <div id="tab-polo" class="tab-pane active">
+      <div class="section-header">
+        <div class="section-title">👕 แจ้งไซซ์เสื้อโปโลและกางเกงวอร์ม</div>
+      </div>
+      <div id="polo-import-section"></div>
+      <div class="search-box"><input type="text" id="polo-search" placeholder="ค้นหานักเรียน..." oninput="renderStudentCards('polo')"></div>
+      <div class="filter-bar" id="polo-filter"></div>
+      <div id="polo-grid" class="students-grid"></div>
+      <button class="add-student-btn" onclick="openAddStudentModal()">➕ เพิ่มนักเรียน Walk-in</button>
+    </div>
+
+    <!-- TAB 2: Sport Shirt -->
+    <div id="tab-sport" class="tab-pane">
+      <div class="section-header">
+        <div class="section-title">🏃 แจ้งไซซ์เสื้อกีฬา</div>
+      </div>
+      <div class="search-box"><input type="text" id="sport-search" placeholder="ค้นหานักเรียน..." oninput="renderStudentCards('sport')"></div>
+      <div class="filter-bar" id="sport-filter"></div>
+      <div id="sport-grid" class="students-grid"></div>
+    </div>
+
+    <!-- TAB 3: Bus -->
+    <div id="tab-bus" class="tab-pane">
+      <div class="section-header">
+        <div class="section-title">🚌 แจ้งความประสงค์ขึ้นรถรับส่ง</div>
+      </div>
+      <div class="search-box"><input type="text" id="bus-search" placeholder="ค้นหานักเรียน..." oninput="renderStudentCards('bus')"></div>
+      <div class="filter-bar" id="bus-filter"></div>
+      <div id="bus-grid" class="students-grid"></div>
+    </div>
+
+    <!-- TAB 4: Coop -->
+    <div id="tab-coop" class="tab-pane">
+      <div class="section-header">
+        <div class="section-title">🏦 แจ้งสมัครสมาชิกสหกรณ์</div>
+      </div>
+      <div class="search-box"><input type="text" id="coop-search" placeholder="ค้นหานักเรียน..." oninput="renderStudentCards('coop')"></div>
+      <div class="filter-bar" id="coop-filter"></div>
+      <div id="coop-grid" class="students-grid"></div>
+    </div>
+
+    <!-- TAB 5: Summary -->
+    <div id="tab-summary" class="tab-pane">
+      <div class="section-header">
+        <div class="section-title">📊 สรุปข้อมูลนักเรียน</div>
+      </div>
+      <div id="summary-stats" class="stats-grid"></div>
+      <div class="summary-controls no-print">
+        <input type="text" id="sum-search" placeholder="🔍 ค้นหา..." oninput="renderSummary()">
+        <select id="sum-class" onchange="renderSummary()">
+          <option value="">ทุกระดับชั้น</option>
+          <option value="ม.1">ม.1</option>
+          <option value="ม.4">ม.4</option>
+        </select>
+        <select id="sum-bus" onchange="renderSummary()">
+          <option value="">รถรับส่ง: ทั้งหมด</option>
+          <option value="yes">ขึ้นรถ</option>
+          <option value="no">ไม่ขึ้น</option>
+        </select>
+      </div>
+      <div class="summary-controls no-print" style="margin-bottom:16px">
+        <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ พิมพ์</button>
+        <button class="btn btn-success btn-sm" onclick="exportExcel()">📥 Export Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>ชื่อ-สกุล</th>
+              <th>ระดับชั้น</th>
+              <th>เสื้อโปโล</th>
+              <th>วอร์ม</th>
+              <th>เสื้อกีฬา</th>
+              <th>รถรับส่ง</th>
+              <th>หมู่บ้าน</th>
+              <th>หุ้น</th>
+              <th>รวมชำระ</th>
+            </tr>
+          </thead>
+          <tbody id="summary-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT SECTION (shown in polo tab only) -->
+<div id="global-import" style="display:none">
+  <div class="import-section">
+    <h3>📂 นำเข้ารายชื่อนักเรียน</h3>
+    <p>อัปโหลดไฟล์ Excel รายชื่อนักเรียน หรือดาวน์โหลด Template</p>
+    <div class="import-actions">
+      <button class="btn btn-primary btn-sm" onclick="document.getElementById('fileInput').click()">📤 อัปโหลดไฟล์</button>
+      <button class="btn btn-outline btn-sm" onclick="downloadTemplate()">📥 ดาวน์โหลด Template</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<!-- Polo Modal -->
+<div class="modal-overlay" id="modal-polo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">👕 แจ้งไซซ์เสื้อ</div>
+      <button class="modal-close" onclick="closeModal('modal-polo')">✕</button>
+    </div>
+    <div class="student-info-box">
+      <div class="avatar">👤</div>
+      <div>
+        <div class="name" id="polo-modal-name">-</div>
+        <div class="class" id="polo-modal-class">-</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">🎽 ไซซ์เสื้อโปโล</label>
+      <select class="form-select" id="polo-size-select" onchange="toggleOther('polo-polo')">
+        <option value="">-- เลือกไซซ์ --</option>
+        <option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL</option><option>4XL</option>
+        <option value="other">อื่นๆ (ระบุ)</option>
+      </select>
+      <input type="text" class="form-input" id="polo-polo-other" placeholder="ระบุไซซ์..." style="display:none;margin-top:8px">
+    </div>
+    <div class="form-group">
+      <label class="form-label">🩳 ไซซ์กางเกงวอร์ม</label>
+      <select class="form-select" id="polo-warm-select" onchange="toggleOther('polo-warm')">
+        <option value="">-- เลือกไซซ์ --</option>
+        <option>24</option><option>26</option><option>28</option><option>30</option><option>32</option><option>34</option><option>36</option><option>38</option><option>40</option>
+        <option value="other">อื่นๆ (ระบุ)</option>
+      </select>
+      <input type="text" class="form-input" id="polo-warm-other" placeholder="ระบุไซซ์..." style="display:none;margin-top:8px">
+    </div>
+    <button class="btn btn-primary btn-lg" onclick="savePolo()">💾 บันทึกข้อมูล</button>
+  </div>
+</div>
+
+<!-- Sport Modal -->
+<div class="modal-overlay" id="modal-sport">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🏃 แจ้งไซซ์เสื้อกีฬา</div>
+      <button class="modal-close" onclick="closeModal('modal-sport')">✕</button>
+    </div>
+    <div class="student-info-box">
+      <div class="avatar">👤</div>
+      <div>
+        <div class="name" id="sport-modal-name">-</div>
+        <div class="class" id="sport-modal-class">-</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">🏃 ไซซ์เสื้อกีฬา</label>
+      <select class="form-select" id="sport-size-select" onchange="toggleOther('sport-sport')">
+        <option value="">-- เลือกไซซ์ --</option>
+        <option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL</option><option>4XL</option>
+        <option value="other">อื่นๆ (ระบุ)</option>
+      </select>
+      <input type="text" class="form-input" id="sport-sport-other" placeholder="ระบุไซซ์..." style="display:none;margin-top:8px">
+    </div>
+    <button class="btn btn-primary btn-lg" onclick="saveSport()">💾 บันทึกข้อมูล</button>
+  </div>
+</div>
+
+<!-- Bus Modal -->
+<div class="modal-overlay" id="modal-bus">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🚌 แจ้งขึ้นรถรับส่ง</div>
+      <button class="modal-close" onclick="closeModal('modal-bus')">✕</button>
+    </div>
+    <div class="student-info-box">
+      <div class="avatar">👤</div>
+      <div>
+        <div class="name" id="bus-modal-name">-</div>
+        <div class="class" id="bus-modal-class">-</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="checkbox-group">
+        <input type="checkbox" id="bus-checkbox">
+        <label for="bus-checkbox">🚌 ต้องการขึ้นรถรับส่ง</label>
+      </div>
+    </div>
+    <div class="form-group" id="bus-village-group" style="display:none">
+      <label class="form-label">📍 จุดขึ้นรถ (ชื่อหมู่บ้าน)</label>
+      <input type="text" class="form-input" id="bus-village" list="village-suggestions" placeholder="บ้าน...">
+      <datalist id="village-suggestions"></datalist>
+    </div>
+    <button class="btn btn-primary btn-lg" onclick="saveBus()">💾 บันทึกข้อมูล</button>
+  </div>
+</div>
+
+<!-- Coop Modal -->
+<div class="modal-overlay" id="modal-coop">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🏦 สมัครสมาชิกสหกรณ์</div>
+      <button class="modal-close" onclick="closeModal('modal-coop')">✕</button>
+    </div>
+    <div class="student-info-box">
+      <div class="avatar">👤</div>
+      <div>
+        <div class="name" id="coop-modal-name">-</div>
+        <div class="class" id="coop-modal-class">-</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">📦 จำนวนหุ้น (หุ้นละ 20 บาท)</label>
+      <input type="number" class="form-input" id="coop-shares" min="1" value="1" oninput="calcCoop()">
+    </div>
+    <div class="amount-display">
+      <div class="label">ค่าหุ้นที่ต้องชำระ</div>
+      <div class="amount" id="coop-stock-total">20 บาท</div>
+    </div>
+    <div class="form-group" style="display:flex;gap:12px">
+      <div style="flex:1">
+        <label class="form-label">💰 ค่าธรรมเนียม</label>
+        <input type="number" class="form-input" id="coop-fee" value="5" oninput="calcCoop()">
+      </div>
+      <div style="flex:1">
+        <label class="form-label">🧾 รวมต้องชำระ</label>
+        <input type="text" class="form-input" id="coop-grand-total" readonly style="background:var(--bg);font-weight:700;color:var(--primary)">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-lg" onclick="saveCoop()">💾 บันทึกข้อมูล</button>
+  </div>
+</div>
+
+<!-- Add Student Modal -->
+<div class="modal-overlay" id="modal-add-student">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ เพิ่มนักเรียน Walk-in</div>
+      <button class="modal-close" onclick="closeModal('modal-add-student')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">คำนำหน้า</label>
+      <select class="form-select" id="add-prefix">
+        <option>เด็กชาย</option><option>เด็กหญิง</option><option>นาย</option><option>นางสาว</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">ชื่อ</label>
+      <input type="text" class="form-input" id="add-firstname" placeholder="ชื่อจริง">
+    </div>
+    <div class="form-group">
+      <label class="form-label">นามสกุล</label>
+      <input type="text" class="form-input" id="add-lastname" placeholder="นามสกุล">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ระดับชั้นที่สมัคร</label>
+      <select class="form-select" id="add-class">
+        <option value="ม.1">ม.1</option>
+        <option value="ม.4">ม.4</option>
+      </select>
+    </div>
+    <button class="btn btn-success btn-lg" onclick="addStudentManual()">✅ เพิ่มนักเรียน</button>
+  </div>
+</div>
+
+<!-- Firebase + App Scripts -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, getDocs, getDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCYwPGCNSTJnP1JY0DWtX0T3Lj9QhcejqQ",
+  authDomain: "mobtua-fe44b.firebaseapp.com",
+  projectId: "mobtua-fe44b",
+  storageBucket: "mobtua-fe44b.firebasestorage.app",
+  messagingSenderId: "24053520838",
+  appId: "1:24053520838:web:78ddc0d8428173408cbac7"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Global state
+window._students = [];
+window._records = {};
+window._currentStudent = null;
+window._activeTab = 'polo';
+window._db = db;
+
+// ====== LANDING ======
+window.enterApp = function() {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadData();
+}
+
+// ====== LOAD DATA ======
+async function loadData() {
+  showLoading();
+  try {
+    // Load students
+    const sSnap = await getDocs(collection(db, 'students'));
+    window._students = [];
+    sSnap.forEach(d => window._students.push({ id: d.id, ...d.data() }));
+
+    // Load records
+    const rSnap = await getDocs(collection(db, 'records'));
+    window._records = {};
+    rSnap.forEach(d => window._records[d.id] = d.data());
+
+    renderAll();
+    renderImportSection();
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function showLoading() {
+  ['polo','sport','bus','coop'].forEach(tab => {
+    document.getElementById(`${tab}-grid`).innerHTML = '<div class="loading"><div class="spinner"></div>กำลังโหลด...</div>';
+  });
+}
+
+function renderAll() {
+  renderStudentCards('polo');
+  renderStudentCards('sport');
+  renderStudentCards('bus');
+  renderStudentCards('coop');
+  renderSummary();
+}
+
+// ====== RENDER IMPORT ======
+function renderImportSection() {
+  const el = document.getElementById('polo-import-section');
+  el.innerHTML = `
+    <div class="import-section">
+      <h3>📂 นำเข้ารายชื่อนักเรียน</h3>
+      <p>รายชื่อปัจจุบัน: <strong>${window._students.length} คน</strong> | อัปโหลดไฟล์ Excel หรือดาวน์โหลด Template</p>
+      <div class="import-actions">
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('fileInput').click()">📤 อัปโหลดไฟล์</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadTemplate()">📥 ดาวน์โหลด Template</button>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
+      </div>
+    </div>
+  `;
+}
+
+// ====== RENDER STUDENT CARDS ======
+window.renderStudentCards = function(tab) {
+  const grid = document.getElementById(`${tab}-grid`);
+  const search = document.getElementById(`${tab}-search`).value.toLowerCase();
+  const activeFilter = document.querySelector(`#${tab}-filter .filter-chip.active`)?.dataset.val || '';
+
+  let filtered = window._students.filter(s => {
+    const full = `${s.prefix}${s.firstname}${s.lastname}`.toLowerCase();
+    const matchSearch = !search || full.includes(search);
+    const matchFilter = !activeFilter || s.classLevel === activeFilter;
+    return matchSearch && matchFilter;
+  });
+
+  // Render filters
+  const filterEl = document.getElementById(`${tab}-filter`);
+  const classes = [...new Set(window._students.map(s => s.classLevel))].sort();
+  filterEl.innerHTML = `<span class="filter-chip ${!activeFilter?'active':''}" data-val="" onclick="setFilter('${tab}','')">ทั้งหมด</span>` +
+    classes.map(c => `<span class="filter-chip ${activeFilter===c?'active':''}" data-val="${c}" onclick="setFilter('${tab}','${c}')">${c}</span>`).join('');
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="no-data"><span class="emoji">🎒</span>ไม่พบรายชื่อนักเรียน<br><small>อัปโหลดไฟล์รายชื่อด้านบน</small></div>';
+    return;
+  }
+
+  const checkField = { polo: ['poloSize','warmSize'], sport: ['sportSize'], bus: ['bus'], coop: ['shares'] };
+  grid.innerHTML = filtered.map(s => {
+    const rec = window._records[s.id] || {};
+    const filled = checkField[tab].every(f => rec[f] !== undefined && rec[f] !== '');
+    const isMale = s.prefix === 'เด็กชาย' || s.prefix === 'นาย';
+    return `<div class="student-card ${filled?'filled':''}" onclick="openStudentModal('${tab}','${s.id}')">
+      <div class="student-avatar ${isMale?'m':'f'}">${isMale?'👦':'👧'}</div>
+      <div class="student-name">${s.prefix}${s.firstname}<br>${s.lastname}</div>
+      <div class="student-class">${s.classLevel||''}</div>
+    </div>`;
+  }).join('');
+}
+
+window.setFilter = function(tab, val) {
+  document.querySelectorAll(`#${tab}-filter .filter-chip`).forEach(c => c.classList.toggle('active', c.dataset.val === val));
+  renderStudentCards(tab);
+}
+
+// ====== OPEN MODAL ======
+window.openStudentModal = function(tab, studentId) {
+  const s = window._students.find(x => x.id === studentId);
+  if (!s) return;
+  window._currentStudent = s;
+  const rec = window._records[s.id] || {};
+  const fullName = `${s.prefix}${s.firstname} ${s.lastname}`;
+
+  if (tab === 'polo') {
+    document.getElementById('polo-modal-name').textContent = fullName;
+    document.getElementById('polo-modal-class').textContent = s.classLevel || '';
+    const ps = rec.poloSize || '';
+    const ws = rec.warmSize || '';
+    const sizes = ['XS','S','M','L','XL','XXL','3XL','4XL'];
+    document.getElementById('polo-size-select').value = sizes.includes(ps) ? ps : (ps ? 'other' : '');
+    document.getElementById('polo-polo-other').style.display = sizes.includes(ps) || !ps ? 'none' : 'block';
+    document.getElementById('polo-polo-other').value = sizes.includes(ps) || !ps ? '' : ps;
+    const ws2 = ['24','26','28','30','32','34','36','38','40'];
+    document.getElementById('polo-warm-select').value = ws2.includes(ws) ? ws : (ws ? 'other' : '');
+    document.getElementById('polo-warm-other').style.display = ws2.includes(ws) || !ws ? 'none' : 'block';
+    document.getElementById('polo-warm-other').value = ws2.includes(ws) || !ws ? '' : ws;
+    openModal('modal-polo');
+  } else if (tab === 'sport') {
+    document.getElementById('sport-modal-name').textContent = fullName;
+    document.getElementById('sport-modal-class').textContent = s.classLevel || '';
+    const ss = rec.sportSize || '';
+    const sizes = ['XS','S','M','L','XL','XXL','3XL','4XL'];
+    document.getElementById('sport-size-select').value = sizes.includes(ss) ? ss : (ss ? 'other' : '');
+    document.getElementById('sport-sport-other').style.display = sizes.includes(ss) || !ss ? 'none' : 'block';
+    document.getElementById('sport-sport-other').value = sizes.includes(ss) || !ss ? '' : ss;
+    openModal('modal-sport');
+  } else if (tab === 'bus') {
+    document.getElementById('bus-modal-name').textContent = fullName;
+    document.getElementById('bus-modal-class').textContent = s.classLevel || '';
+    document.getElementById('bus-checkbox').checked = rec.bus === true;
+    document.getElementById('bus-village').value = rec.busVillage || '';
+    document.getElementById('bus-village-group').style.display = rec.bus ? 'block' : 'none';
+    // Populate village suggestions
+    const villages = [...new Set(Object.values(window._records).filter(r => r.busVillage).map(r => r.busVillage))];
+    document.getElementById('village-suggestions').innerHTML = villages.map(v => `<option value="${v}">`).join('');
+    document.getElementById('bus-checkbox').onchange = function() {
+      document.getElementById('bus-village-group').style.display = this.checked ? 'block' : 'none';
+    };
+    openModal('modal-bus');
+  } else if (tab === 'coop') {
+    document.getElementById('coop-modal-name').textContent = fullName;
+    document.getElementById('coop-modal-class').textContent = s.classLevel || '';
+    document.getElementById('coop-shares').value = rec.shares || 1;
+    document.getElementById('coop-fee').value = rec.fee !== undefined ? rec.fee : 5;
+    calcCoop();
+    openModal('modal-coop');
+  }
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); }
+window.openModal = openModal;
+
+// ====== TOGGLE OTHER ======
+window.toggleOther = function(key) {
+  const map = {
+    'polo-polo': { sel: 'polo-size-select', inp: 'polo-polo-other' },
+    'polo-warm': { sel: 'polo-warm-select', inp: 'polo-warm-other' },
+    'sport-sport': { sel: 'sport-size-select', inp: 'sport-sport-other' }
+  };
+  const { sel, inp } = map[key];
+  document.getElementById(inp).style.display = document.getElementById(sel).value === 'other' ? 'block' : 'none';
+}
+
+// ====== CALC COOP ======
+window.calcCoop = function() {
+  const shares = parseInt(document.getElementById('coop-shares').value) || 0;
+  const fee = parseFloat(document.getElementById('coop-fee').value) || 0;
+  const stockTotal = shares * 20;
+  const grand = stockTotal + fee;
+  document.getElementById('coop-stock-total').textContent = stockTotal.toLocaleString() + ' บาท';
+  document.getElementById('coop-grand-total').value = grand.toLocaleString() + ' บาท';
+}
+
+// ====== SAVE FUNCTIONS ======
+async function saveRecord(data) {
+  const s = window._currentStudent;
+  if (!s) return;
+  const existing = window._records[s.id] || {};
+  const merged = { ...existing, ...data };
+  await setDoc(doc(db, 'records', s.id), merged);
+  window._records[s.id] = merged;
+}
+
+window.savePolo = async function() {
+  const sel = document.getElementById('polo-size-select').value;
+  const polo = sel === 'other' ? document.getElementById('polo-polo-other').value : sel;
+  const wsel = document.getElementById('polo-warm-select').value;
+  const warm = wsel === 'other' ? document.getElementById('polo-warm-other').value : wsel;
+  if (!polo || !warm) { Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อมูลให้ครบ', confirmButtonColor: '#1a56db' }); return; }
+  await saveRecord({ poloSize: polo, warmSize: warm });
+  closeModal('modal-polo');
+  renderStudentCards('polo');
+  renderSummary();
+  Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ! ✅', html: `<b>เสื้อโปโล:</b> ${polo}<br><b>วอร์ม:</b> ${warm}`, confirmButtonColor: '#1a56db', timer: 2000, timerProgressBar: true });
+}
+
+window.saveSport = async function() {
+  const sel = document.getElementById('sport-size-select').value;
+  const sport = sel === 'other' ? document.getElementById('sport-sport-other').value : sel;
+  if (!sport) { Swal.fire({ icon: 'warning', title: 'กรุณาเลือกไซซ์', confirmButtonColor: '#1a56db' }); return; }
+  await saveRecord({ sportSize: sport });
+  closeModal('modal-sport');
+  renderStudentCards('sport');
+  renderSummary();
+  Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ! ✅', html: `<b>เสื้อกีฬา:</b> ${sport}`, confirmButtonColor: '#1a56db', timer: 2000, timerProgressBar: true });
+}
+
+window.saveBus = async function() {
+  const bus = document.getElementById('bus-checkbox').checked;
+  const village = bus ? document.getElementById('bus-village').value.trim() : '';
+  if (bus && !village) { Swal.fire({ icon: 'warning', title: 'กรุณาระบุชื่อหมู่บ้าน', confirmButtonColor: '#1a56db' }); return; }
+  await saveRecord({ bus, busVillage: village });
+  closeModal('modal-bus');
+  renderStudentCards('bus');
+  renderSummary();
+  Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ! ✅', html: bus ? `ขึ้นรถ: <b>${village}</b>` : 'ไม่ขึ้นรถรับส่ง', confirmButtonColor: '#1a56db', timer: 2000, timerProgressBar: true });
+}
+
+window.saveCoop = async function() {
+  const shares = parseInt(document.getElementById('coop-shares').value) || 0;
+  const fee = parseFloat(document.getElementById('coop-fee').value) || 0;
+  if (shares < 1) { Swal.fire({ icon: 'warning', title: 'กรุณาระบุจำนวนหุ้น', confirmButtonColor: '#1a56db' }); return; }
+  const stockTotal = shares * 20;
+  const grand = stockTotal + fee;
+  const s = window._currentStudent;
+  const result = await Swal.fire({
+    icon: 'question',
+    title: 'ยืนยันการบันทึก',
+    html: `<b>${s.prefix}${s.firstname} ${s.lastname}</b><br>หุ้น: ${shares} หุ้น | ค่าหุ้น: ${stockTotal} บาท<br>ค่าธรรมเนียม: ${fee} บาท<br><b>รวม: ${grand} บาท</b>`,
+    showCancelButton: true,
+    confirmButtonText: '✅ ยืนยัน',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#1a56db'
+  });
+  if (!result.isConfirmed) return;
+  await saveRecord({ shares, fee, stockTotal, grand });
+  closeModal('modal-coop');
+  renderStudentCards('coop');
+  renderSummary();
+  Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ! ✅', html: `รวมชำระ: <b>${grand} บาท</b>`, confirmButtonColor: '#1a56db', timer: 2000, timerProgressBar: true });
+}
+
+// ====== TAB SWITCH ======
+window.switchTab = function(tab) {
+  window._activeTab = tab;
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (tab === 'summary') renderSummary();
+}
+
+// ====== SUMMARY ======
+window.renderSummary = function() {
+  const search = (document.getElementById('sum-search')?.value || '').toLowerCase();
+  const cls = document.getElementById('sum-class')?.value || '';
+  const busF = document.getElementById('sum-bus')?.value || '';
+
+  let filtered = window._students.filter(s => {
+    const full = `${s.prefix}${s.firstname}${s.lastname}`.toLowerCase();
+    const rec = window._records[s.id] || {};
+    const matchS = !search || full.includes(search);
+    const matchC = !cls || s.classLevel === cls;
+    const matchB = !busF || (busF === 'yes' ? rec.bus === true : rec.bus !== true);
+    return matchS && matchC && matchB;
+  });
+
+  // Stats
+  const stats = [
+    { num: window._students.length, label: 'นักเรียนทั้งหมด', icon: '👥' },
+    { num: window._students.filter(s => (window._records[s.id]||{}).poloSize).length, label: 'แจ้งไซซ์โปโล', icon: '👕' },
+    { num: window._students.filter(s => (window._records[s.id]||{}).sportSize).length, label: 'แจ้งไซซ์กีฬา', icon: '🏃' },
+    { num: window._students.filter(s => (window._records[s.id]||{}).bus === true).length, label: 'ขึ้นรถรับส่ง', icon: '🚌' },
+    { num: window._students.filter(s => (window._records[s.id]||{}).shares).length, label: 'สมัครสหกรณ์', icon: '🏦' },
+  ];
+  document.getElementById('summary-stats').innerHTML = stats.map(s =>
+    `<div class="stat-card"><div style="font-size:24px">${s.icon}</div><div class="stat-num">${s.num}</div><div class="stat-label">${s.label}</div></div>`
+  ).join('');
+
+  // Table
+  const tbody = document.getElementById('summary-tbody');
+  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#64748b;padding:30px">ไม่พบข้อมูล</td></tr>'; return; }
+  tbody.innerHTML = filtered.map((s, i) => {
+    const r = window._records[s.id] || {};
+    return `<tr>
+      <td>${i+1}</td>
+      <td><b>${s.prefix}${s.firstname} ${s.lastname}</b></td>
+      <td>${s.classLevel||'-'}</td>
+      <td>${r.poloSize||'-'}</td>
+      <td>${r.warmSize||'-'}</td>
+      <td>${r.sportSize||'-'}</td>
+      <td><span class="badge ${r.bus?'badge-yes':'badge-no'}">${r.bus?'ขึ้นรถ':'ไม่ขึ้น'}</span></td>
+      <td>${r.busVillage||'-'}</td>
+      <td>${r.shares||'-'}</td>
+      <td>${r.grand ? r.grand+' ฿' : '-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ====== IMPORT EXCEL ======
+window.importExcel = async function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      let added = 0;
+      for (const row of rows) {
+        const prefix = String(row['คำนำหน้า'] || row['prefix'] || '').trim();
+        const firstname = String(row['ชื่อ'] || row['firstname'] || '').trim();
+        const lastname = String(row['นามสกุล'] || row['lastname'] || '').trim();
+        const classLevel = String(row['ระดับชั้น'] || row['class'] || '').trim();
+        if (!firstname || !lastname) continue;
+        const id = `${prefix}${firstname}${lastname}`.replace(/\s/g, '');
+        await setDoc(doc(db, 'students', id), { prefix, firstname, lastname, classLevel, addedAt: new Date().toISOString() });
+        if (!window._students.find(s => s.id === id)) {
+          window._students.push({ id, prefix, firstname, lastname, classLevel });
+          added++;
+        }
+      }
+      renderAll();
+      renderImportSection();
+      event.target.value = '';
+      Swal.fire({ icon: 'success', title: `นำเข้าสำเร็จ!`, text: `เพิ่มนักเรียน ${added} คน (ทั้งหมด ${window._students.length} คน)`, confirmButtonColor: '#1a56db' });
+    } catch(err) {
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถอ่านไฟล์ได้', confirmButtonColor: '#1a56db' });
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ====== DOWNLOAD TEMPLATE ======
+window.downloadTemplate = function() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['คำนำหน้า', 'ชื่อ', 'นามสกุล', 'ระดับชั้น'],
+    ['เด็กชาย', 'ตัวอย่าง', 'นักเรียน', 'ม.1'],
+    ['เด็กหญิง', 'ตัวอย่าง2', 'นักเรียน2', 'ม.4'],
+    ['นาย', 'ตัวอย่าง3', 'นักเรียน3', 'ม.4'],
+    ['นางสาว', 'ตัวอย่าง4', 'นักเรียน4', 'ม.1'],
+  ]);
+  ws['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 20 }, { wch: 12 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'รายชื่อนักเรียน');
+  XLSX.writeFile(wb, 'template_รายชื่อนักเรียน.xlsx');
+}
+
+// ====== ADD STUDENT MANUAL ======
+window.openAddStudentModal = function() { openModal('modal-add-student'); }
+window.addStudentManual = async function() {
+  const prefix = document.getElementById('add-prefix').value;
+  const firstname = document.getElementById('add-firstname').value.trim();
+  const lastname = document.getElementById('add-lastname').value.trim();
+  const classLevel = document.getElementById('add-class').value;
+  if (!firstname || !lastname) { Swal.fire({ icon: 'warning', title: 'กรุณากรอกชื่อและนามสกุล', confirmButtonColor: '#1a56db' }); return; }
+  const id = `${prefix}${firstname}${lastname}`.replace(/\s/g, '');
+  await setDoc(doc(db, 'students', id), { prefix, firstname, lastname, classLevel, addedAt: new Date().toISOString() });
+  if (!window._students.find(s => s.id === id)) window._students.push({ id, prefix, firstname, lastname, classLevel });
+  closeModal('modal-add-student');
+  document.getElementById('add-firstname').value = '';
+  document.getElementById('add-lastname').value = '';
+  renderAll();
+  renderImportSection();
+  Swal.fire({ icon: 'success', title: 'เพิ่มนักเรียนสำเร็จ! ✅', text: `${prefix}${firstname} ${lastname}`, confirmButtonColor: '#1a56db', timer: 2000, timerProgressBar: true });
+}
+
+// ====== EXPORT EXCEL ======
+window.exportExcel = function() {
+  const rows = [['#', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'ระดับชั้น', 'เสื้อโปโล', 'กางเกงวอร์ม', 'เสื้อกีฬา', 'ขึ้นรถ', 'หมู่บ้าน', 'จำนวนหุ้น', 'ค่าหุ้น', 'ค่าธรรมเนียม', 'รวมชำระ']];
+  window._students.forEach((s, i) => {
+    const r = window._records[s.id] || {};
+    rows.push([i+1, s.prefix, s.firstname, s.lastname, s.classLevel||'', r.poloSize||'', r.warmSize||'', r.sportSize||'', r.bus?'ขึ้นรถ':'ไม่ขึ้น', r.busVillage||'', r.shares||'', r.stockTotal||'', r.fee||'', r.grand||'']);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = rows[0].map(() => ({ wch: 14 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'สรุปข้อมูลมอบตัว');
+  XLSX.writeFile(wb, `สรุปข้อมูลมอบตัว_${new Date().toLocaleDateString('th-TH')}.xlsx`);
+}
+
+// ====== CLOSE MODAL ON OVERLAY CLICK ======
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+</script>
+</body>
+</html>
