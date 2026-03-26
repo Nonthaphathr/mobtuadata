@@ -986,26 +986,27 @@ window.printSummary = function(levelFilter) {
   });
   const levelLabel = lvlOverride ? ` — ${lvlOverride}` : '';
   const now = new Date().toLocaleString('th-TH', { dateStyle: 'full', timeStyle: 'short' });
+  const payLabel = v => v === 'paid' ? '✓ จ่าย' : v === 'later' ? '⏳' : '-';
+
   const rows = students.map((s, i) => {
-    const polo = window._poloData[s.id];
+    const polo  = window._poloData[s.id];
     const sports = window._sportsData[s.id];
-    const bus = window._busData[s.id];
-    const coop = window._coopData[s.id];
-    const poloPayStatus = polo ? (polo.payStatus === 'paid' ? '✓ จ่ายแล้ว' : polo.payStatus === 'later' ? '⏳ ภายหลัง' : '-') : '-';
-    const sportsPayStatus = sports ? (sports.payStatus === 'paid' ? '✓ จ่ายแล้ว' : sports.payStatus === 'later' ? '⏳ ภายหลัง' : '-') : '-';
+    const bus   = window._busData[s.id];
+    const coop  = window._coopData[s.id];
     return `<tr>
       <td>${i+1}</td>
       <td>${s.prefix}${s.name} ${s.surname}</td>
       <td>${s.level}</td>
       <td>${polo ? polo.polo : '-'}</td>
       <td>${polo ? polo.pants : '-'}</td>
-      <td>${poloPayStatus}</td>
+      <td>${polo ? payLabel(polo.payStatus) : '-'}</td>
+      <td style="text-align:right">${polo && polo.payAmount ? polo.payAmount : '-'}</td>
       <td>${sports ? sports.sports : '-'}</td>
-      <td>${sportsPayStatus}</td>
-      <td>${bus !== undefined ? (bus.wantBus ? '✓ ขึ้นรถ' : 'ไม่ขึ้น') : '-'}</td>
-      <td>${bus && bus.wantBus ? bus.village : '-'}</td>
+      <td>${sports ? payLabel(sports.payStatus) : '-'}</td>
+      <td style="text-align:right">${sports && sports.payAmount ? sports.payAmount : '-'}</td>
+      <td>${bus !== undefined ? (bus.wantBus ? '✓ ' + bus.village : 'ไม่ขึ้น') : '-'}</td>
       <td>${coop !== undefined ? coop.shares + ' หุ้น' : '-'}</td>
-      <td>${coop !== undefined ? coop.grandTotal + ' บ.' : '-'}</td>
+      <td style="text-align:right">${coop !== undefined ? coop.grandTotal : '-'}</td>
     </tr>`;
   }).join('');
 
@@ -1014,18 +1015,18 @@ window.printSummary = function(levelFilter) {
   <title>สรุปข้อมูลวันมอบตัวนักเรียน</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Sarabun', sans-serif; font-size: 13px; margin: 0; padding: 16mm 14mm; color: #222; }
-    .print-header { text-align: center; margin-bottom: 14px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-    .print-header h1 { font-size: 17px; font-weight: 700; margin: 0 0 3px; }
-    .print-header p { font-size: 12px; color: #555; margin: 0; }
-    .print-meta { display: flex; justify-content: space-between; font-size: 11px; color: #555; margin-bottom: 8px; }
-    table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
-    th { background: #3d1a2e; color: white; padding: 6px 5px; text-align: center; font-weight: 700; border: 1px solid #555; white-space: nowrap; font-size: 11px; }
-    td { padding: 5px 5px; border: 1px solid #ccc; vertical-align: middle; }
-    tr:nth-child(even) td { background: #fdf0f5; }
-    td:first-child { text-align: center; }
-    .print-footer { margin-top: 20px; font-size: 11px; color: #888; text-align: center; }
-    @media print { @page { size: A4 landscape; margin: 12mm 10mm; } body { padding: 0; } }
+    body{font-family:'Sarabun',sans-serif;font-size:12px;margin:0;padding:12mm 10mm;color:#222}
+    .print-header{text-align:center;margin-bottom:12px;border-bottom:2px solid #333;padding-bottom:8px}
+    .print-header h1{font-size:15px;font-weight:700;margin:0 0 3px}
+    .print-header p{font-size:11px;color:#555;margin:0}
+    .print-meta{display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:8px}
+    table{width:100%;border-collapse:collapse;font-size:10.5px}
+    th{background:#3d1a2e;color:white;padding:5px 4px;text-align:center;font-weight:700;border:1px solid #555;white-space:nowrap;font-size:10px}
+    td{padding:4px 4px;border:1px solid #ccc;vertical-align:middle}
+    tr:nth-child(even) td{background:#fdf0f5}
+    td:first-child{text-align:center;width:26px}
+    .print-footer{margin-top:16px;font-size:11px;color:#888;text-align:center}
+    @media print{@page{size:A4 landscape;margin:8mm 8mm}body{padding:0}}
   </style></head><body>
   <div class="print-header">
     <h1>สรุปข้อมูลวันมอบตัวนักเรียน${levelLabel}</h1>
@@ -1038,48 +1039,97 @@ window.printSummary = function(levelFilter) {
   <table>
     <thead><tr>
       <th>#</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th>
-      <th>ไซซ์โปโล</th><th>ไซซ์วอร์ม</th><th>ชำระเสื้อโปโล</th>
-      <th>ไซซ์กีฬา</th><th>ชำระเสื้อกีฬา</th>
-      <th>รถรับส่ง</th><th>หมู่บ้าน</th>
-      <th>หุ้นสหกรณ์</th><th>ยอดชำระ</th>
+      <th>ไซซ์โปโล</th><th>ไซซ์วอร์ม</th><th>ชำระ</th><th>ยอดโปโล</th>
+      <th>ไซซ์กีฬา</th><th>ชำระ</th><th>ยอดกีฬา</th>
+      <th>รถรับส่ง/หมู่บ้าน</th>
+      <th>หุ้นสหกรณ์</th><th>ยอดสหกรณ์</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>
   <div class="print-footer">พัฒนาโดย ครูนนทพัทธ์ หิรัญเรือง | โรงเรียนกระดุมทองวิทยา</div>
-  <script>window.onload = () => { window.print(); }<\/script>
+  <script>window.onload=()=>{window.print();}<\/script>
   </body></html>`;
 
-  const w = window.open('', '_blank', 'width=1100,height=800');
+  const w = window.open('', '_blank', 'width=1200,height=800');
   w.document.write(html);
   w.document.close();
 }
 
 window.exportExcel = function() {
+  const XLSX = window.XLSX;
+  if (!XLSX) { showAlert('error', 'ไม่พบ SheetJS', 'กรุณารอโหลดหน้าใหม่'); return; }
   const students = window._students;
-  let rows = [['ลำดับ','คำนำหน้า','ชื่อ','นามสกุล','ระดับชั้น','ไซซ์โปโล','ไซซ์กางเกง','ชำระโปโล','หมายเหตุโปโล','ไซซ์เสื้อกีฬา','ชำระกีฬา','หมายเหตุกีฬา','ขึ้นรถ','หมู่บ้าน','จำนวนหุ้น','รวมสหกรณ์']];
-  students.forEach((s, i) => {
-    const polo = window._poloData[s.id];
+  const payLabel = v => v === 'paid' ? 'จ่ายแล้ว' : v === 'later' ? 'จ่ายภายหลัง' : '';
+  const wb = XLSX.utils.book_new();
+
+  // ---- Sheet 1: ข้อมูลรายบุคคล ----
+  const mainHeader = ['ลำดับ','คำนำหน้า','ชื่อ','นามสกุล','ระดับชั้น',
+    'ไซซ์โปโล','เสื้อโปโล(ตัว)','ไซซ์กางเกง','กางเกง(ตัว)','สถานะชำระโปโล','ยอดชำระโปโล','หมายเหตุโปโล',
+    'ไซซ์เสื้อกีฬา','เสื้อกีฬา(ตัว)','สถานะชำระกีฬา','ยอดชำระกีฬา','หมายเหตุกีฬา',
+    'ขึ้นรถ','หมู่บ้าน','จำนวนหุ้น','ค่าหุ้น','ค่าธรรมเนียม','รวมสหกรณ์'];
+  const mainRows = students.map((s, i) => {
+    const polo  = window._poloData[s.id];
     const sports = window._sportsData[s.id];
-    const bus = window._busData[s.id];
-    const coop = window._coopData[s.id];
-    const payLabel = v => v === 'paid' ? 'จ่ายแล้ว' : v === 'later' ? 'จ่ายภายหลัง' : '';
-    rows.push([i+1, s.prefix, s.name, s.surname, s.level,
-      polo ? polo.polo : '', polo ? polo.pants : '',
-      polo ? payLabel(polo.payStatus) : '', polo ? (polo.payNote||'') : '',
-      sports ? sports.sports : '',
-      sports ? payLabel(sports.payStatus) : '', sports ? (sports.payNote||'') : '',
-      bus !== undefined ? (bus.wantBus ? 'ขึ้นรถ' : 'ไม่ขึ้น') : '',
-      bus && bus.wantBus ? bus.village : '',
-      coop ? coop.shares : '', coop ? coop.grandTotal : ''
-    ]);
+    const bus   = window._busData[s.id];
+    const coop  = window._coopData[s.id];
+    return [i+1, s.prefix, s.name, s.surname, s.level,
+      polo?polo.polo:'', polo?(polo.poloShirtQty??polo.poloQty??''):'',
+      polo?polo.pants:'', polo?(polo.poloPantQty??polo.poloQty??''):'',
+      polo?payLabel(polo.payStatus):'', polo?(polo.payAmount||''):'', polo?(polo.payNote||''):'',
+      sports?sports.sports:'', sports?(sports.sportsQty||1):'',
+      sports?payLabel(sports.payStatus):'', sports?(sports.payAmount||''):'', sports?(sports.payNote||''):'',
+      bus!==undefined?(bus.wantBus?'ขึ้นรถ':'ไม่ขึ้น'):'', bus&&bus.wantBus?bus.village:'',
+      coop?coop.shares:'', coop?coop.shareTotal:'', coop?coop.fee:'', coop?coop.grandTotal:''];
   });
-  let csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-  const bom = '\uFEFF';
-  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'สรุปข้อมูลวันมอบตัว.csv';
-  a.click();
+  const ws1 = XLSX.utils.aoa_to_sheet([mainHeader, ...mainRows]);
+  ws1['!cols'] = mainHeader.map((_,i) => ({ wch: [6,10,12,14,8,8,8,8,8,12,10,18,10,8,12,10,18,8,16,8,8,8,10][i]||12 }));
+  XLSX.utils.book_append_sheet(wb, ws1, 'ข้อมูลรายบุคคล');
+
+  // ---- Sheet 2: สรุปไซซ์โปโล/วอร์ม ----
+  const poloCounts={}, pantCounts={};
+  students.forEach(s => {
+    const d = window._poloData[s.id];
+    if (!d) return;
+    if (d.polo) poloCounts[d.polo] = (poloCounts[d.polo]||0) + (Number(d.poloShirtQty??d.poloQty??1)||0);
+    if (d.pants) pantCounts[d.pants] = (pantCounts[d.pants]||0) + (Number(d.poloPantQty??d.poloQty??1)||0);
+  });
+  const poloSummaryRows = [['ไซซ์โปโล','จำนวนเสื้อ(ตัว)'], ...Object.entries(poloCounts).sort(),
+    ['รวม', Object.values(poloCounts).reduce((a,b)=>a+b,0)],
+    [], ['ไซซ์กางเกงวอร์ม','จำนวนกางเกง(ตัว)'], ...Object.entries(pantCounts).sort(),
+    ['รวม', Object.values(pantCounts).reduce((a,b)=>a+b,0)]];
+  const ws2 = XLSX.utils.aoa_to_sheet(poloSummaryRows);
+  ws2['!cols'] = [{wch:18},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'สรุปไซซ์โปโล-วอร์ม');
+
+  // ---- Sheet 3: สรุปไซซ์เสื้อกีฬา ----
+  const sportsCounts = {};
+  students.forEach(s => {
+    const d = window._sportsData[s.id];
+    if (d && d.sports) sportsCounts[d.sports] = (sportsCounts[d.sports]||0) + (Number(d.sportsQty||1)||0);
+  });
+  const sportsSummaryRows = [['ไซซ์เสื้อกีฬา','จำนวน(ตัว)'], ...Object.entries(sportsCounts).sort(),
+    ['รวม', Object.values(sportsCounts).reduce((a,b)=>a+b,0)]];
+  const ws3 = XLSX.utils.aoa_to_sheet(sportsSummaryRows);
+  ws3['!cols'] = [{wch:18},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'สรุปไซซ์เสื้อกีฬา');
+
+  // ---- Sheet 4: สรุปหมู่บ้านรถรับส่ง ----
+  const villageCounts = {};
+  let wantBusN=0, noBusN=0;
+  students.forEach(s => {
+    const d = window._busData[s.id];
+    if (d === undefined) return;
+    if (d.wantBus && d.village) { villageCounts[d.village]=(villageCounts[d.village]||0)+1; wantBusN++; }
+    else noBusN++;
+  });
+  const busSummaryRows = [['หมู่บ้าน / จุดขึ้น','จำนวนนักเรียน'],
+    ...Object.entries(villageCounts).sort((a,b)=>b[1]-a[1]),
+    [], ['ขึ้นรถรวม', wantBusN], ['ไม่ขึ้นรถ', noBusN]];
+  const ws4 = XLSX.utils.aoa_to_sheet(busSummaryRows);
+  ws4['!cols'] = [{wch:22},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws4, 'สรุปหมู่บ้านรถรับส่ง');
+
+  XLSX.writeFile(wb, 'ข้อมูลวันมอบตัวนักเรียน.xlsx');
 }
 
 // ---- ADD STUDENT ----
@@ -1287,9 +1337,10 @@ window.openSettings = function() {
 window.closeSettings = function() { document.getElementById('settingsModal').style.display = 'none'; }
 
 // ---- PRINT PER TAB ----
-function buildPrintDoc(title, headers, rows) {
+function buildPrintDoc(title, headers, rows, summaryHtml, landscape) {
   const now = new Date().toLocaleString('th-TH', { dateStyle: 'full', timeStyle: 'short' });
-  const bodyRows = rows.map((r, i) => `<tr><td>${i+1}</td>${r.map(c=>`<td>${c||'-'}</td>`).join('')}</tr>`).join('');
+  const bodyRows = rows.map((r, i) => `<tr><td>${i+1}</td>${r.map(c=>`<td>${String(c||'').replace(/\n/g,'<br>')}</td>`).join('')}</tr>`).join('');
+  const pageSize = landscape ? 'A4 landscape' : 'A4 portrait';
   return `<!DOCTYPE html><html lang="th"><head>
   <meta charset="UTF-8"><title>${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1303,15 +1354,69 @@ function buildPrintDoc(title, headers, rows) {
     td{padding:5px 5px;border:1px solid #ccc;vertical-align:middle}
     tr:nth-child(even) td{background:#fdf0f5}
     td:first-child{text-align:center;width:30px}
+    .sum-section{margin-top:20px;page-break-before:always}
+    .sum-title{font-size:14px;font-weight:700;margin-bottom:8px;color:#3d1a2e;border-bottom:1px solid #ccc;padding-bottom:4px}
+    .sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:12px}
+    .sum-card{border:1px solid #ccc;border-radius:6px;padding:8px 6px;text-align:center;background:#fdf0f5}
+    .sum-card .sz{font-size:15px;font-weight:800;color:#3d1a2e}
+    .sum-card .ct{font-size:11px;color:#666}
+    .sum-total{font-size:13px;font-weight:700;margin-top:6px;color:#3d1a2e}
     .pf{margin-top:18px;font-size:11px;color:#999;text-align:center}
-    @media print{@page{size:A4 portrait;margin:10mm 8mm}body{padding:0}}
+    @media print{@page{size:${pageSize};margin:10mm 8mm}body{padding:0}}
   </style></head><body>
   <div class="ph"><h1>${title}</h1><p>โรงเรียนกระดุมทองวิทยา | ปีการศึกษา 2569</p></div>
   <div class="pm"><span>จำนวน: <strong>${rows.length} คน</strong></span><span>พิมพ์: ${now}</span></div>
   <table><thead><tr><th>#</th>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
   <tbody>${bodyRows}</tbody></table>
+  ${summaryHtml || ''}
   <div class="pf">พัฒนาโดย ครูนนทพัทธ์ หิรัญเรือง</div>
   <script>window.onload=()=>window.print()<\/script></body></html>`;
+}
+
+// helper: build size summary grid html
+function buildSizeSummaryHtml(sections) {
+  // sections = [{title, counts: {sz: qty, ...}, unit}]
+  return sections.map(sec => {
+    const entries = Object.entries(sec.counts).sort((a,b)=>a[0].localeCompare(b[0],'th'));
+    const total = entries.reduce((s,[,v])=>s+v, 0);
+    if (!total) return '';
+    const cards = entries.map(([sz,qty])=>`
+      <div class="sum-card"><div class="sz">${sz}</div><div class="ct">${qty} ${sec.unit||'ตัว'}</div></div>`).join('');
+    return `<div class="sum-section">
+      <div class="sum-title">${sec.title}</div>
+      <div class="sum-grid">${cards}</div>
+      <div class="sum-total">รวมทั้งหมด ${total} ${sec.unit||'ตัว'}</div>
+    </div>`;
+  }).join('');
+}
+
+// helper: build village summary html
+function buildVillageSummaryHtml(students) {
+  const counts = {};
+  let wantBusTotal = 0, noBusTotal = 0;
+  students.forEach(s => {
+    const d = window._busData[s.id];
+    if (d === undefined) return;
+    if (d.wantBus && d.village) {
+      counts[d.village] = (counts[d.village] || 0) + 1;
+      wantBusTotal++;
+    } else {
+      noBusTotal++;
+    }
+  });
+  const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  if (!entries.length) return '';
+  const rows = entries.map(([v,c])=>`<tr><td>${v}</td><td style="text-align:center;font-weight:700">${c}</td></tr>`).join('');
+  return `<div class="sum-section">
+    <div class="sum-title">📍 สรุปจุดขึ้นรถรับส่งตามหมู่บ้าน</div>
+    <table style="max-width:400px">
+      <thead><tr><th>หมู่บ้าน / จุดขึ้น</th><th>จำนวน (คน)</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="sum-total" style="margin-top:8px">
+      ขึ้นรถ ${wantBusTotal} คน &nbsp;|&nbsp; ไม่ขึ้น ${noBusTotal} คน
+    </div>
+  </div>`;
 }
 
 window.openPrintOptions = function(tabName) {
@@ -1346,30 +1451,51 @@ window.printTab = function(tabName, levelFilter) {
     ? window._students.filter(s => s.level === levelFilter)
     : window._students;
 
-  let title, headers, rows;
+  let title, headers, rows, summaryHtml = '', landscape = false;
   const payLabel = v => v === 'paid' ? '✓ จ่ายแล้ว' : v === 'later' ? '⏳ ภายหลัง' : '-';
   const levelLabel = levelFilter ? ` (${levelFilter})` : ' (ทุกระดับชั้น)';
 
   if (tabName === 'polo') {
     title = 'รายการแจ้งไซซ์เสื้อโปโลและกางเกงวอร์ม' + levelLabel;
-    headers = ['ชื่อ-นามสกุล','ชั้น','ไซซ์โปโล','ไซซ์วอร์ม','เสื้อ(ตัว)','กางเกง(ตัว)','ชำระ','หมายเหตุ'];
+    headers = ['ชื่อ-นามสกุล','ชั้น','ไซซ์โปโล','ไซซ์วอร์ม','เสื้อ(ตัว)','กางเกง(ตัว)','สถานะชำระ','ยอดชำระ (บ.)','หมายเหตุ'];
+    landscape = true;
+    // count sizes
+    const poloCounts = {}, pantCounts = {};
     rows = students.map(s => {
       const d = window._poloData[s.id];
       const sQty = d ? (d.poloShirtQty ?? d.poloQty ?? '') : '';
       const pQty = d ? (d.poloPantQty  ?? d.poloQty ?? '') : '';
+      const amt  = d ? (d.payAmount || '') : '';
+      if (d && d.polo) {
+        poloCounts[d.polo] = (poloCounts[d.polo]||0) + (Number(sQty)||0);
+        pantCounts[d.pants||'-'] = (pantCounts[d.pants||'-']||0) + (Number(pQty)||0);
+      }
       return [s.prefix+s.name+' '+s.surname, s.level,
         d?d.polo:'', d?d.pants:'', sQty, pQty,
-        d?payLabel(d.payStatus):'', d?d.payNote:''];
+        d?payLabel(d.payStatus):'', amt, d?d.payNote:''];
     });
+    summaryHtml = buildSizeSummaryHtml([
+      { title: '👕 สรุปไซซ์เสื้อโปโล', counts: poloCounts, unit: 'ตัว' },
+      { title: '👖 สรุปไซซ์กางเกงวอร์ม', counts: pantCounts, unit: 'ตัว' }
+    ]);
+
   } else if (tabName === 'sports') {
     title = 'รายการแจ้งไซซ์เสื้อกีฬา' + levelLabel;
-    headers = ['ชื่อ-นามสกุล','ชั้น','ไซซ์เสื้อกีฬา','จำนวน','ชำระ','หมายเหตุ'];
+    headers = ['ชื่อ-นามสกุล','ชั้น','ไซซ์เสื้อกีฬา','จำนวน','สถานะชำระ','ยอดชำระ (บ.)','หมายเหตุ'];
+    const sportsCounts = {};
     rows = students.map(s => {
       const d = window._sportsData[s.id];
+      const qty = d ? (d.sportsQty||1) : '';
+      const amt = d ? (d.payAmount || '') : '';
+      if (d && d.sports) sportsCounts[d.sports] = (sportsCounts[d.sports]||0) + (Number(qty)||0);
       return [s.prefix+s.name+' '+s.surname, s.level,
-        d?d.sports:'', d?(d.sportsQty||1)+' ตัว':'',
-        d?payLabel(d.payStatus):'', d?d.payNote:''];
+        d?d.sports:'', qty ? qty+' ตัว' : '',
+        d?payLabel(d.payStatus):'', amt, d?d.payNote:''];
     });
+    summaryHtml = buildSizeSummaryHtml([
+      { title: '🏃 สรุปไซซ์เสื้อกีฬา', counts: sportsCounts, unit: 'ตัว' }
+    ]);
+
   } else if (tabName === 'bus') {
     title = 'รายการแจ้งความประสงค์ขึ้นรถรับส่ง' + levelLabel;
     headers = ['ชื่อ-นามสกุล','ชั้น','ขึ้นรถ','หมู่บ้าน/จุดขึ้น'];
@@ -1379,20 +1505,23 @@ window.printTab = function(tabName, levelFilter) {
         d?(d.wantBus?'✓ ขึ้นรถ':'ไม่ขึ้น'):'',
         d&&d.wantBus?d.village:''];
     });
+    summaryHtml = buildVillageSummaryHtml(students);
+
   } else if (tabName === 'coop') {
     title = 'รายการสมัครสมาชิกสหกรณ์' + levelLabel;
-    headers = ['ชื่อ-นามสกุล','ชั้น','จำนวนหุ้น','ค่าหุ้น','ค่าธรรมเนียม','รวมชำระ'];
+    headers = ['ชื่อ-นามสกุล','ชั้น','จำนวนหุ้น','ค่าหุ้น (บ.)','ค่าธรรมเนียม (บ.)','รวมชำระ (บ.)'];
     rows = students.map(s => {
       const d = window._coopData[s.id];
       return [s.prefix+s.name+' '+s.surname, s.level,
-        d?d.shares+' หุ้น':'', d?d.shareTotal+' บ.':'',
-        d?d.fee+' บ.':'', d?d.grandTotal+' บ.':''];
+        d?d.shares+' หุ้น':'', d?d.shareTotal:'',
+        d?d.fee:'', d?d.grandTotal:''];
     });
+
   } else {
     printSummary(levelFilter); return;
   }
-  const w = window.open('','_blank','width=900,height=700');
-  w.document.write(buildPrintDoc(title, headers, rows));
+  const w = window.open('','_blank','width=1000,height=750');
+  w.document.write(buildPrintDoc(title, headers, rows, summaryHtml, landscape));
   w.document.close();
 }
 
