@@ -275,6 +275,10 @@ window.openPoloModal = function(id, editMode) {
   updatePoloPayCalc();
   setPoloEditMode(editMode !== false);
   modal.style.display = 'flex';
+  // if new record & edit mode, check for draft to restore
+  if (editMode !== false && !window._poloData[id]) {
+    setTimeout(() => checkAndRestorePoloDraft(id), 100);
+  }
 }
 
 window.updatePoloPayCalc = function() {
@@ -327,7 +331,172 @@ window.handleSizeChange = function(selectId, otherRowId) {
   document.getElementById(otherRowId).style.display = val === 'อื่นๆ' ? 'block' : 'none';
 }
 
-window.closePoloModal = function() { document.getElementById('poloModal').style.display = 'none'; }
+window.closePoloModal = function(force) {
+  if (!force) { clearPoloLocalDraft(); }
+  document.getElementById('poloModal').style.display = 'none';
+}
+
+// ---- LOCAL DRAFT STORAGE ----
+const DRAFT_KEYS = { polo:'_draft_polo', sports:'_draft_sports', bus:'_draft_bus', coop:'_draft_coop' };
+
+function savePoloLocalDraft() {
+  const d = {
+    id: document.getElementById('poloStudentId').value,
+    polo: document.getElementById('poloSizeSelect').value,
+    poloOther: document.getElementById('poloOtherInput').value,
+    pants: document.getElementById('pantSizeSelect').value,
+    pantOther: document.getElementById('pantOtherInput').value,
+    shirtQty: document.getElementById('poloShirtQtyInput').value,
+    pantQty: document.getElementById('poloPantQtyInput').value,
+    payStatus: (document.querySelector('#poloModal .pay-radio-btn.active') || {}).dataset?.val || '',
+    payNote: document.getElementById('poloPayNote').value,
+    ts: Date.now()
+  };
+  if (d.id) localStorage.setItem(DRAFT_KEYS.polo, JSON.stringify(d));
+}
+
+function loadPoloLocalDraft() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEYS.polo) || 'null'); } catch { return null; }
+}
+
+function clearPoloLocalDraft() { localStorage.removeItem(DRAFT_KEYS.polo); }
+
+function saveSportsLocalDraft() {
+  const d = {
+    id: document.getElementById('sportsStudentId').value,
+    sports: document.getElementById('sportsSizeSelect').value,
+    sportsOther: document.getElementById('sportsOtherInput').value,
+    qty: document.getElementById('sportsQtyInput').value,
+    payStatus: (document.querySelector('#sportsModal .pay-radio-btn.active') || {}).dataset?.val || '',
+    payNote: document.getElementById('sportsPayNote').value,
+    ts: Date.now()
+  };
+  if (d.id) localStorage.setItem(DRAFT_KEYS.sports, JSON.stringify(d));
+}
+
+function loadSportsLocalDraft() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEYS.sports) || 'null'); } catch { return null; }
+}
+
+function clearSportsLocalDraft() { localStorage.removeItem(DRAFT_KEYS.sports); }
+
+function saveBusLocalDraft() {
+  const d = {
+    id: document.getElementById('busStudentId').value,
+    wantBus: document.getElementById('busWantCheck').checked,
+    village: document.getElementById('busVillageInput').value,
+    ts: Date.now()
+  };
+  if (d.id) localStorage.setItem(DRAFT_KEYS.bus, JSON.stringify(d));
+}
+
+function loadBusLocalDraft() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEYS.bus) || 'null'); } catch { return null; }
+}
+
+function clearBusLocalDraft() { localStorage.removeItem(DRAFT_KEYS.bus); }
+
+function saveCoopLocalDraft() {
+  const d = {
+    id: document.getElementById('coopStudentId').value,
+    shares: document.getElementById('coopSharesInput').value,
+    ts: Date.now()
+  };
+  if (d.id) localStorage.setItem(DRAFT_KEYS.coop, JSON.stringify(d));
+}
+
+function loadCoopLocalDraft() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEYS.coop) || 'null'); } catch { return null; }
+}
+
+function clearCoopLocalDraft() { localStorage.removeItem(DRAFT_KEYS.coop); }
+
+// ---- CHECK DRAFT ON OPEN ----
+function checkAndRestorePoloDraft(id) {
+  const draft = loadPoloLocalDraft();
+  if (draft && draft.id === id && (Date.now() - draft.ts) < 3600000) {
+    showConfirm(
+      '📝 มีข้อมูลค้างอยู่',
+      'พบข้อมูลที่กรอกค้างไว้ก่อนหน้า ต้องการโหลดข้อมูลนั้นกลับมาต่อหรือไม่?',
+      () => applyPoloDraft(draft)
+    );
+  }
+}
+
+function applyPoloDraft(draft) {
+  renderSizeSelect('poloSizeSelect', POLO_SIZES, draft.polo || '');
+  renderSizeSelect('pantSizeSelect', PANT_SIZES, draft.pants || '');
+  document.getElementById('poloOtherInput').value = draft.poloOther || '';
+  document.getElementById('pantOtherInput').value = draft.pantOther || '';
+  document.getElementById('poloShirtQtyInput').value = draft.shirtQty || 1;
+  document.getElementById('poloPantQtyInput').value = draft.pantQty || 1;
+  const poloOtherRow = document.getElementById('poloOtherRow');
+  const pantOtherRow = document.getElementById('pantOtherRow');
+  poloOtherRow.style.display = draft.polo === 'อื่นๆ' ? 'block' : 'none';
+  pantOtherRow.style.display = draft.pants === 'อื่นๆ' ? 'block' : 'none';
+  setPoloPayStatus(draft.payStatus || '');
+  document.getElementById('poloPayNote').value = draft.payNote || '';
+  togglePoloPayNote();
+  updatePoloPayCalc();
+}
+
+function checkAndRestoreSportsDraft(id) {
+  const draft = loadSportsLocalDraft();
+  if (draft && draft.id === id && (Date.now() - draft.ts) < 3600000) {
+    showConfirm(
+      '📝 มีข้อมูลค้างอยู่',
+      'พบข้อมูลที่กรอกค้างไว้ก่อนหน้า ต้องการโหลดข้อมูลนั้นกลับมาต่อหรือไม่?',
+      () => applySportsDraft(draft)
+    );
+  }
+}
+
+function applySportsDraft(draft) {
+  renderSizeSelect('sportsSizeSelect', SPORT_SIZES, draft.sports || '');
+  document.getElementById('sportsOtherInput').value = draft.sportsOther || '';
+  document.getElementById('sportsQtyInput').value = draft.qty || 1;
+  document.getElementById('sportsOtherRow').style.display = draft.sports === 'อื่นๆ' ? 'block' : 'none';
+  setSportsPayStatus(draft.payStatus || '');
+  document.getElementById('sportsPayNote').value = draft.payNote || '';
+  toggleSportsPayNote();
+  updateSportsPayCalc();
+}
+
+// ---- TRY-CLOSE: confirm if edit mode has unsaved data ----
+window.tryClosePoloModal = function() {
+  const editVisible = document.getElementById('poloSaveBtn').style.display !== 'none';
+  if (!editVisible) { closePoloModal(); return; }
+  // save current state to draft before asking
+  savePoloLocalDraft();
+  showConfirm('⚠️ ยังไม่ได้บันทึก', 'ต้องการปิดโดยไม่บันทึกข้อมูลหรือไม่?\nข้อมูลที่กรอกจะถูกเก็บไว้ชั่วคราว', () => closePoloModal(true));
+}
+
+window.tryCloseSportsModal = function() {
+  const editVisible = document.getElementById('sportsSaveBtn').style.display !== 'none';
+  if (!editVisible) { closeSportsModal(); return; }
+  saveSportsLocalDraft();
+  showConfirm('⚠️ ยังไม่ได้บันทึก', 'ต้องการปิดโดยไม่บันทึกข้อมูลหรือไม่?\nข้อมูลที่กรอกจะถูกเก็บไว้ชั่วคราว', () => closeSportsModal(true));
+}
+
+window.tryCloseBusModal = function() {
+  const hasData = document.getElementById('busVillageInput').value.trim() || document.getElementById('busWantCheck').checked;
+  // check if there's already saved data (not unsaved)
+  const id = document.getElementById('busStudentId').value;
+  const existing = window._busData[id];
+  if (existing !== undefined) { closeBusModal(); return; }
+  if (!hasData) { closeBusModal(); return; }
+  saveBusLocalDraft();
+  showConfirm('⚠️ ยังไม่ได้บันทึก', 'ต้องการปิดโดยไม่บันทึกข้อมูลหรือไม่?\nข้อมูลที่กรอกจะถูกเก็บไว้ชั่วคราว', () => closeBusModal(true));
+}
+
+window.tryCloseCoopModal = function() {
+  const shares = document.getElementById('coopSharesInput').value;
+  const id = document.getElementById('coopStudentId').value;
+  const existing = window._coopData[id];
+  if (existing !== undefined || !shares) { closeCoopModal(); return; }
+  saveCoopLocalDraft();
+  showConfirm('⚠️ ยังไม่ได้บันทึก', 'ต้องการปิดโดยไม่บันทึกข้อมูลหรือไม่?\nข้อมูลที่กรอกจะถูกเก็บไว้ชั่วคราว', () => closeCoopModal(true));
+}
 
 window.savePoloData = async function() {
   const id = document.getElementById('poloStudentId').value;
@@ -348,7 +517,8 @@ window.savePoloData = async function() {
   const data = { polo, pants, poloShirtQty, poloPantQty, payStatus, payNote, payAmount, updatedAt: new Date().toISOString() };
   await setDoc(doc(db, 'mobtua_polo', id), data);
   window._poloData[id] = data;
-  closePoloModal();
+  clearPoloLocalDraft();
+  closePoloModal(true);
   renderPoloList();
   showLoading(false);
   const qtySummary = [poloShirtQty > 0 ? `เสื้อ ${poloShirtQty} ตัว` : '', poloPantQty > 0 ? `กางเกง ${poloPantQty} ตัว` : ''].filter(Boolean).join(', ');
@@ -438,6 +608,9 @@ window.openSportsModal = function(id, editMode) {
   updateSportsPayCalc();
   setSportsEditMode(editMode !== false);
   document.getElementById('sportsModal').style.display = 'flex';
+  if (editMode !== false && !window._sportsData[id]) {
+    setTimeout(() => checkAndRestoreSportsDraft(id), 100);
+  }
 }
 
 window.updateSportsPayCalc = function() {
@@ -473,7 +646,10 @@ window.toggleSportsPayNote = function() {
   document.getElementById('sportsPayNoteRow').style.display = val === 'later' ? 'block' : 'none';
 }
 
-window.closeSportsModal = function() { document.getElementById('sportsModal').style.display = 'none'; }
+window.closeSportsModal = function(force) {
+  if (!force) { clearSportsLocalDraft(); }
+  document.getElementById('sportsModal').style.display = 'none';
+}
 
 window.saveSportsData = async function() {
   const id = document.getElementById('sportsStudentId').value;
@@ -490,7 +666,8 @@ window.saveSportsData = async function() {
   const data = { sports, sportsQty, payStatus, payNote, payAmount, updatedAt: new Date().toISOString() };
   await setDoc(doc(db, 'mobtua_sports', id), data);
   window._sportsData[id] = data;
-  closeSportsModal();
+  clearSportsLocalDraft();
+  closeSportsModal(true);
   renderSportsList();
   showLoading(false);
   showAlert('success', 'บันทึกสำเร็จ', `เสื้อกีฬา: ${sports} | จำนวน: ${sportsQty} ตัว`);
@@ -566,7 +743,10 @@ window.updateBusVillageSuggest = function(val) {
   list.innerHTML = filtered.map(v => `<option value="${v}">`).join('');
 }
 
-window.closeBusModal = function() { document.getElementById('busModal').style.display = 'none'; }
+window.closeBusModal = function(force) {
+  if (!force) { clearBusLocalDraft(); }
+  document.getElementById('busModal').style.display = 'none';
+}
 
 window.saveBusData = async function() {
   const id = document.getElementById('busStudentId').value;
@@ -578,7 +758,8 @@ window.saveBusData = async function() {
   await setDoc(doc(db, 'mobtua_bus', id), data);
   window._busData[id] = data;
   if (wantBus && village && !window._busVillages.includes(village)) window._busVillages.push(village);
-  closeBusModal();
+  clearBusLocalDraft();
+  closeBusModal(true);
   renderBusList();
   showLoading(false);
   showAlert('success', 'บันทึกสำเร็จ', wantBus ? `ขึ้นรถรับส่ง | จุดขึ้น: ${village}` : 'ไม่ขึ้นรถรับส่ง');
@@ -660,7 +841,10 @@ window.updateCoopCalc = function() {
   }
 }
 
-window.closeCoopModal = function() { document.getElementById('coopModal').style.display = 'none'; }
+window.closeCoopModal = function(force) {
+  if (!force) { clearCoopLocalDraft(); }
+  document.getElementById('coopModal').style.display = 'none';
+}
 
 window.saveCoopData = async function() {
   const id = document.getElementById('coopStudentId').value;
@@ -678,7 +862,8 @@ window.saveCoopData = async function() {
       const data = { shares, shareTotal: total, fee: FEE, grandTotal: grand, updatedAt: new Date().toISOString() };
       await setDoc(doc(db, 'mobtua_coop', id), data);
       window._coopData[id] = data;
-      closeCoopModal();
+      clearCoopLocalDraft();
+      closeCoopModal(true);
       renderCoopList();
       showLoading(false);
       showAlert('success', 'บันทึกสำเร็จ', `${shares} หุ้น | รวม ${grand} บาท`);
@@ -1211,6 +1396,11 @@ window.printTab = function(tabName, levelFilter) {
   w.document.close();
 }
 
+window.savePoloLocalDraft = savePoloLocalDraft;
+window.saveSportsLocalDraft = saveSportsLocalDraft;
+window.saveBusLocalDraft = saveBusLocalDraft;
+window.saveCoopLocalDraft = saveCoopLocalDraft;
+
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', () => {
   showLoading(true);
@@ -1716,7 +1906,7 @@ datalist option { font-family: 'Sarabun', sans-serif; }
 </div>
 
 <!-- POLO MODAL -->
-<div id="poloModal" class="modal-overlay" onclick="if(event.target===this)closePoloModal()">
+<div id="poloModal" class="modal-overlay" onclick="if(event.target===this)tryClosePoloModal()">
   <div class="modal-box">
     <div class="modal-handle"></div>
     <div class="modal-header">
@@ -1724,21 +1914,21 @@ datalist option { font-family: 'Sarabun', sans-serif; }
         <div id="poloModalTitle" class="modal-title"></div>
         <div id="poloModalLevel" class="modal-subtitle badge badge-info" style="margin-top:0.3rem;"></div>
       </div>
-      <button class="modal-close" onclick="closePoloModal()">✕</button>
+      <button class="modal-close" onclick="tryClosePoloModal()">✕</button>
     </div>
     <input type="hidden" id="poloStudentId">
     <div class="form-group">
       <label class="form-label">👕 ไซซ์เสื้อโปโล</label>
-      <select id="poloSizeSelect" class="form-select" onchange="handleSizeChange('poloSizeSelect','poloOtherRow')"></select>
+      <select id="poloSizeSelect" class="form-select" onchange="handleSizeChange('poloSizeSelect','poloOtherRow');savePoloLocalDraft()"></select>
       <div id="poloOtherRow" class="other-input-row" style="display:none;">
-        <input id="poloOtherInput" class="form-input" type="text" placeholder="ระบุไซซ์อื่นๆ">
+        <input id="poloOtherInput" class="form-input" type="text" placeholder="ระบุไซซ์อื่นๆ" oninput="savePoloLocalDraft()">
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">👖 ไซซ์กางเกงวอร์ม</label>
-      <select id="pantSizeSelect" class="form-select" onchange="handleSizeChange('pantSizeSelect','pantOtherRow')"></select>
+      <select id="pantSizeSelect" class="form-select" onchange="handleSizeChange('pantSizeSelect','pantOtherRow');savePoloLocalDraft()"></select>
       <div id="pantOtherRow" class="other-input-row" style="display:none;">
-        <input id="pantOtherInput" class="form-input" type="text" placeholder="ระบุไซซ์อื่นๆ">
+        <input id="pantOtherInput" class="form-input" type="text" placeholder="ระบุไซซ์อื่นๆ" oninput="savePoloLocalDraft()">
       </div>
     </div>
     <div class="form-group">
@@ -1746,11 +1936,11 @@ datalist option { font-family: 'Sarabun', sans-serif; }
       <div class="qty-row">
         <div class="qty-item">
           <span class="qty-label">👕 เสื้อโปโล</span>
-          <input id="poloShirtQtyInput" class="form-input qty-input" type="number" min="0" value="1" oninput="updatePoloPayCalc()">
+          <input id="poloShirtQtyInput" class="form-input qty-input" type="number" min="0" value="1" oninput="updatePoloPayCalc();savePoloLocalDraft()">
         </div>
         <div class="qty-item">
           <span class="qty-label">👖 กางเกงวอร์ม</span>
-          <input id="poloPantQtyInput" class="form-input qty-input" type="number" min="0" value="1" oninput="updatePoloPayCalc()">
+          <input id="poloPantQtyInput" class="form-input qty-input" type="number" min="0" value="1" oninput="updatePoloPayCalc();savePoloLocalDraft()">
         </div>
       </div>
       <div id="poloPayCalcBox" class="pay-calc-box" style="display:none;"></div>
@@ -1758,25 +1948,25 @@ datalist option { font-family: 'Sarabun', sans-serif; }
     <div class="form-group">
       <label class="form-label">💳 สถานะการชำระเงิน</label>
       <div class="pay-radio-group">
-        <div class="pay-radio-btn" data-val="paid" onclick="document.querySelectorAll('#poloModal .pay-radio-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');togglePoloPayNote()">✅ จ่ายแล้ว</div>
-        <div class="pay-radio-btn" data-val="later" onclick="document.querySelectorAll('#poloModal .pay-radio-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');togglePoloPayNote()">⏳ จ่ายภายหลัง</div>
+        <div class="pay-radio-btn" data-val="paid" onclick="document.querySelectorAll('#poloModal .pay-radio-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');togglePoloPayNote();savePoloLocalDraft()">✅ จ่ายแล้ว</div>
+        <div class="pay-radio-btn" data-val="later" onclick="document.querySelectorAll('#poloModal .pay-radio-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');togglePoloPayNote();savePoloLocalDraft()">⏳ จ่ายภายหลัง</div>
       </div>
     </div>
     <div id="poloPayNoteRow" class="form-group" style="display:none;">
       <label class="form-label">📝 หมายเหตุ</label>
-      <input id="poloPayNote" class="form-input" type="text" placeholder="เช่น เตรียมเงินมาไม่พอ, นัดหมายจะมาจ่ายวันที่...">
+      <input id="poloPayNote" class="form-input" type="text" placeholder="เช่น เตรียมเงินมาไม่พอ, นัดหมายจะมาจ่ายวันที่..." oninput="savePoloLocalDraft()">
     </div>
     <div class="modal-footer">
       <button id="poloEditBtn" class="btn-edit-mode" onclick="setPoloEditMode(true)" style="display:none;"><i class="fa fa-pen"></i> แก้ไข</button>
       <button id="poloSaveBtn" class="btn-save" onclick="savePoloData()"><i class="fa fa-save"></i> บันทึก</button>
       <button id="poloDeleteBtn" class="btn-delete" onclick="deletePoloData()"><i class="fa fa-trash"></i></button>
-      <button class="btn-cancel" onclick="closePoloModal()">ยกเลิก</button>
+      <button class="btn-cancel" onclick="tryClosePoloModal()">ยกเลิก</button>
     </div>
   </div>
 </div>
 
 <!-- SPORTS MODAL -->
-<div id="sportsModal" class="modal-overlay" onclick="if(event.target===this)closeSportsModal()">
+<div id="sportsModal" class="modal-overlay" onclick="if(event.target===this)tryCloseSportsModal()">
   <div class="modal-box">
     <div class="modal-handle"></div>
     <div class="modal-header">
@@ -1784,43 +1974,43 @@ datalist option { font-family: 'Sarabun', sans-serif; }
         <div id="sportsModalTitle" class="modal-title"></div>
         <div id="sportsModalLevel" class="modal-subtitle badge badge-info" style="margin-top:0.3rem;"></div>
       </div>
-      <button class="modal-close" onclick="closeSportsModal()">✕</button>
+      <button class="modal-close" onclick="tryCloseSportsModal()">✕</button>
     </div>
     <input type="hidden" id="sportsStudentId">
     <div class="form-group">
       <label class="form-label">🏃 ไซซ์เสื้อกีฬา</label>
-      <select id="sportsSizeSelect" class="form-select" onchange="handleSizeChange('sportsSizeSelect','sportsOtherRow')"></select>
+      <select id="sportsSizeSelect" class="form-select" onchange="handleSizeChange('sportsSizeSelect','sportsOtherRow');saveSportsLocalDraft()"></select>
       <div id="sportsOtherRow" class="other-input-row" style="display:none;">
-        <input id="sportsOtherInput" class="form-input" type="text" placeholder="ระบุไซซ์อื่นๆ">
+        <input id="sportsOtherInput" class="form-input" type="text" placeholder="ระบุไซซ์อื่นๆ" oninput="saveSportsLocalDraft()">
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">🔢 จำนวนตัว</label>
-      <input id="sportsQtyInput" class="form-input" type="number" min="1" value="1" oninput="updateSportsPayCalc()">
+      <input id="sportsQtyInput" class="form-input" type="number" min="1" value="1" oninput="updateSportsPayCalc();saveSportsLocalDraft()">
       <div id="sportsPayCalcBox" class="pay-calc-box" style="display:none;"></div>
     </div>
     <div class="form-group">
       <label class="form-label">💳 สถานะการชำระเงิน</label>
       <div class="pay-radio-group">
-        <div class="pay-radio-btn" data-val="paid" onclick="document.querySelectorAll('#sportsModal .pay-radio-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');toggleSportsPayNote()">✅ จ่ายแล้ว</div>
-        <div class="pay-radio-btn" data-val="later" onclick="document.querySelectorAll('#sportsModal .pay-radio-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');toggleSportsPayNote()">⏳ จ่ายภายหลัง</div>
+        <div class="pay-radio-btn" data-val="paid" onclick="document.querySelectorAll('#sportsModal .pay-radio-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');toggleSportsPayNote();saveSportsLocalDraft()">✅ จ่ายแล้ว</div>
+        <div class="pay-radio-btn" data-val="later" onclick="document.querySelectorAll('#sportsModal .pay-radio-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');toggleSportsPayNote();saveSportsLocalDraft()">⏳ จ่ายภายหลัง</div>
       </div>
     </div>
     <div id="sportsPayNoteRow" class="form-group" style="display:none;">
       <label class="form-label">📝 หมายเหตุ</label>
-      <input id="sportsPayNote" class="form-input" type="text" placeholder="เช่น เตรียมเงินมาไม่พอ, นัดหมายจะมาจ่ายวันที่...">
+      <input id="sportsPayNote" class="form-input" type="text" placeholder="เช่น เตรียมเงินมาไม่พอ, นัดหมายจะมาจ่ายวันที่..." oninput="saveSportsLocalDraft()">
     </div>
     <div class="modal-footer">
       <button id="sportsEditBtn" class="btn-edit-mode" onclick="setSportsEditMode(true)" style="display:none;"><i class="fa fa-pen"></i> แก้ไข</button>
       <button id="sportsSaveBtn" class="btn-save" onclick="saveSportsData()"><i class="fa fa-save"></i> บันทึก</button>
       <button id="sportsDeleteBtn" class="btn-delete" onclick="deleteSportsData()"><i class="fa fa-trash"></i></button>
-      <button class="btn-cancel" onclick="closeSportsModal()">ยกเลิก</button>
+      <button class="btn-cancel" onclick="tryCloseSportsModal()">ยกเลิก</button>
     </div>
   </div>
 </div>
 
 <!-- BUS MODAL -->
-<div id="busModal" class="modal-overlay" onclick="if(event.target===this)closeBusModal()">
+<div id="busModal" class="modal-overlay" onclick="if(event.target===this)tryCloseBusModal()">
   <div class="modal-box">
     <div class="modal-handle"></div>
     <div class="modal-header">
@@ -1828,29 +2018,29 @@ datalist option { font-family: 'Sarabun', sans-serif; }
         <div id="busModalTitle" class="modal-title"></div>
         <div id="busModalLevel" class="modal-subtitle badge badge-info" style="margin-top:0.3rem;"></div>
       </div>
-      <button class="modal-close" onclick="closeBusModal()">✕</button>
+      <button class="modal-close" onclick="tryCloseBusModal()">✕</button>
     </div>
     <input type="hidden" id="busStudentId">
     <div class="checkbox-row" onclick="document.getElementById('busWantCheck').click(); toggleBusVillage()">
-      <input type="checkbox" id="busWantCheck" onclick="event.stopPropagation(); toggleBusVillage()">
+      <input type="checkbox" id="busWantCheck" onclick="event.stopPropagation(); toggleBusVillage(); saveBusLocalDraft()">
       <span class="checkbox-label">🚌 ต้องการขึ้นรถรับส่ง</span>
     </div>
     <div id="busVillageRow" style="display:none;">
       <div class="form-group">
         <label class="form-label">📍 จุดขึ้นรถ (ชื่อหมู่บ้าน)</label>
-        <input id="busVillageInput" class="form-input" type="text" list="villageDatalist" placeholder="เช่น บ้านหนองดุม" oninput="updateBusVillageSuggest(this.value)">
+        <input id="busVillageInput" class="form-input" type="text" list="villageDatalist" placeholder="เช่น บ้านหนองดุม" oninput="updateBusVillageSuggest(this.value);saveBusLocalDraft()">
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn-save" onclick="saveBusData()"><i class="fa fa-save"></i> บันทึก</button>
       <button class="btn-delete" onclick="deleteBusData()"><i class="fa fa-trash"></i></button>
-      <button class="btn-cancel" onclick="closeBusModal()">ยกเลิก</button>
+      <button class="btn-cancel" onclick="tryCloseBusModal()">ยกเลิก</button>
     </div>
   </div>
 </div>
 
 <!-- COOP MODAL -->
-<div id="coopModal" class="modal-overlay" onclick="if(event.target===this)closeCoopModal()">
+<div id="coopModal" class="modal-overlay" onclick="if(event.target===this)tryCloseCoopModal()">
   <div class="modal-box">
     <div class="modal-handle"></div>
     <div class="modal-header">
@@ -1858,12 +2048,12 @@ datalist option { font-family: 'Sarabun', sans-serif; }
         <div id="coopModalTitle" class="modal-title"></div>
         <div id="coopModalLevel" class="modal-subtitle badge badge-info" style="margin-top:0.3rem;"></div>
       </div>
-      <button class="modal-close" onclick="closeCoopModal()">✕</button>
+      <button class="modal-close" onclick="tryCloseCoopModal()">✕</button>
     </div>
     <input type="hidden" id="coopStudentId">
     <div class="form-group">
       <label class="form-label">🏦 จำนวนหุ้น (สูงสุด 20 หุ้น)</label>
-      <input id="coopSharesInput" class="form-input" type="number" min="1" max="20" placeholder="ระบุจำนวนหุ้น" oninput="updateCoopCalc()">
+      <input id="coopSharesInput" class="form-input" type="number" min="1" max="20" placeholder="ระบุจำนวนหุ้น" oninput="updateCoopCalc();saveCoopLocalDraft()">
       <div id="coopWarn" class="coop-warn"></div>
     </div>
     <div class="coop-result-box">
@@ -1874,7 +2064,7 @@ datalist option { font-family: 'Sarabun', sans-serif; }
     <div class="modal-footer">
       <button class="btn-save" onclick="saveCoopData()"><i class="fa fa-save"></i> บันทึก</button>
       <button class="btn-delete" onclick="deleteCoopData()"><i class="fa fa-trash"></i></button>
-      <button class="btn-cancel" onclick="closeCoopModal()">ยกเลิก</button>
+      <button class="btn-cancel" onclick="tryCloseCoopModal()">ยกเลิก</button>
     </div>
   </div>
 </div>
