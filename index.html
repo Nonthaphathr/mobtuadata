@@ -213,6 +213,7 @@ function renderPoloList() {
       </div>
       <div class="student-status" style="display:flex;flex-direction:column;gap:0.3rem;align-items:flex-end;">
         ${done ? `<span class="badge badge-success"><i class="fa fa-check"></i> บันทึกแล้ว</span>${qtyBadge}${payBadge}` : '<span class="badge badge-pending">รอบันทึก</span>'}
+        <button class="card-delete-btn" onclick="deleteStudentFromList('${s.id}',event)" title="ลบนักเรียนคนนี้"><i class="fa fa-user-minus"></i></button>
       </div>
     </div>`;
   }).join('');
@@ -566,6 +567,7 @@ function renderSportsList() {
       </div>
       <div class="student-status" style="display:flex;flex-direction:column;gap:0.3rem;align-items:flex-end;">
         ${done ? `<span class="badge badge-success"><i class="fa fa-check"></i> บันทึกแล้ว</span>${qtyBadge}${payBadge}` : '<span class="badge badge-pending">รอบันทึก</span>'}
+        <button class="card-delete-btn" onclick="deleteStudentFromList('${s.id}',event)" title="ลบนักเรียนคนนี้"><i class="fa fa-user-minus"></i></button>
       </div>
     </div>`;
   }).join('');
@@ -711,8 +713,9 @@ function renderBusList() {
           <div class="student-level">${s.level}${wants ? ` &nbsp;|&nbsp; <span style="font-weight:600">📍 ${d.village}</span>` : ''}</div>
         </div>
       </div>
-      <div class="student-status">
+      <div class="student-status" style="display:flex;flex-direction:column;gap:0.3rem;align-items:flex-end;">
         ${done ? `<span class="badge ${wants ? 'badge-info' : 'badge-secondary'}"><i class="fa fa-${wants ? 'bus' : 'times'}"></i> ${wants ? 'ขึ้นรถ' : 'ไม่ขึ้นรถ'}</span>` : '<span class="badge badge-pending">รอบันทึก</span>'}
+        <button class="card-delete-btn" onclick="deleteStudentFromList('${s.id}',event)" title="ลบนักเรียนคนนี้"><i class="fa fa-user-minus"></i></button>
       </div>
     </div>`;
   }).join('');
@@ -806,8 +809,9 @@ function renderCoopList() {
           <div class="student-level">${s.level}${done ? ` &nbsp;|&nbsp; <span style="font-weight:600">${d.shares} หุ้น = ${d.grandTotal} บาท</span>` : ''}</div>
         </div>
       </div>
-      <div class="student-status">
+      <div class="student-status" style="display:flex;flex-direction:column;gap:0.3rem;align-items:flex-end;">
         ${done ? `<span class="badge badge-success"><i class="fa fa-check"></i> ${d.shares} หุ้น</span>` : '<span class="badge badge-pending">รอบันทึก</span>'}
+        <button class="card-delete-btn" onclick="deleteStudentFromList('${s.id}',event)" title="ลบนักเรียนคนนี้"><i class="fa fa-user-minus"></i></button>
       </div>
     </div>`;
   }).join('');
@@ -952,6 +956,30 @@ window.saveEditStudent = async function() {
   renderSummary();
   showLoading(false);
   showAlert('success', 'แก้ไขข้อมูลสำเร็จ', '');
+}
+
+window.deleteStudentFromList = function(id, event) {
+  if (event) event.stopPropagation();
+  const s = window._students.find(x => x.id === id);
+  if (!s) return;
+  showConfirm('🗑️ ลบนักเรียน', `ต้องการลบ "${s.prefix}${s.name} ${s.surname}" และข้อมูลทั้งหมดออกจากระบบ?`, async () => {
+    showLoading(true);
+    const batch = writeBatch(db);
+    batch.delete(doc(db, 'mobtua_students', id));
+    batch.delete(doc(db, 'mobtua_polo', id));
+    batch.delete(doc(db, 'mobtua_sports', id));
+    batch.delete(doc(db, 'mobtua_bus', id));
+    batch.delete(doc(db, 'mobtua_coop', id));
+    await batch.commit();
+    window._students = window._students.filter(x => x.id !== id);
+    delete window._poloData[id];
+    delete window._sportsData[id];
+    delete window._busData[id];
+    delete window._coopData[id];
+    renderCurrentTab();
+    showLoading(false);
+    showAlert('success', 'ลบข้อมูลแล้ว', `${s.prefix}${s.name} ${s.surname}`);
+  });
 }
 
 window.deleteStudent = async function(id) {
@@ -1354,12 +1382,18 @@ function buildPrintDoc(title, headers, rows, summaryHtml, landscape) {
     td{padding:5px 5px;border:1px solid #ccc;vertical-align:middle}
     tr:nth-child(even) td{background:#fdf0f5}
     td:first-child{text-align:center;width:30px}
-    .sum-section{margin-top:20px;page-break-before:always}
-    .sum-title{font-size:14px;font-weight:700;margin-bottom:8px;color:#3d1a2e;border-bottom:1px solid #ccc;padding-bottom:4px}
-    .sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:12px}
-    .sum-card{border:1px solid #ccc;border-radius:6px;padding:8px 6px;text-align:center;background:#fdf0f5}
-    .sum-card .sz{font-size:15px;font-weight:800;color:#3d1a2e}
-    .sum-card .ct{font-size:11px;color:#666}
+    .sum-section{margin-top:20px}
+    .sum-wrap{margin-top:18px;border-top:2px solid #3d1a2e;padding-top:14px}
+    .sum-wrap-title{font-size:15px;font-weight:800;color:#3d1a2e;margin-bottom:14px;text-align:center;letter-spacing:.03em}
+    .ss{margin-bottom:16px}
+    .ss-title{font-size:14px;font-weight:700;color:#3d1a2e;border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px}
+    .sc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-bottom:8px}
+    .sc{border:2px solid #3d1a2e;border-radius:8px;padding:10px 6px;text-align:center;background:#fdf0f5}
+    .sc-sz{font-size:20px;font-weight:900;color:#3d1a2e;line-height:1.1}
+    .sc-ct{font-size:16px;font-weight:700;color:#555;margin-top:3px}
+    .sc-unit{font-size:12px;font-weight:400;color:#888}
+    .ss-total{font-size:13px;font-weight:700;color:#555;text-align:right}
+    .ss-total strong{font-size:16px;color:#3d1a2e}
     .sum-total{font-size:13px;font-weight:700;margin-top:6px;color:#3d1a2e}
     .pf{margin-top:18px;font-size:11px;color:#999;text-align:center}
     @media print{@page{size:${pageSize};margin:10mm 8mm}body{padding:0}}
@@ -1373,21 +1407,40 @@ function buildPrintDoc(title, headers, rows, summaryHtml, landscape) {
   <script>window.onload=()=>window.print()<\/script></body></html>`;
 }
 
-// helper: build size summary grid html
+// helper: build size summary grid html — same page, large clear cards
 function buildSizeSummaryHtml(sections) {
-  // sections = [{title, counts: {sz: qty, ...}, unit}]
-  return sections.map(sec => {
-    const entries = Object.entries(sec.counts).sort((a,b)=>a[0].localeCompare(b[0],'th'));
+  // sort sizes in standard order
+  const SIZE_ORDER = ['XS','S','M','L','XL','2XL','3XL','4XL','28','30','32','34','36','38','40','42','44'];
+  function sortSizes(entries) {
+    return entries.sort((a,b) => {
+      const ai = SIZE_ORDER.indexOf(a[0]);
+      const bi = SIZE_ORDER.indexOf(b[0]);
+      if (ai >= 0 && bi >= 0) return ai - bi;
+      if (ai >= 0) return -1;
+      if (bi >= 0) return 1;
+      return a[0].localeCompare(b[0], 'th');
+    });
+  }
+
+  const sectionsHtml = sections.map(sec => {
+    const entries = sortSizes(Object.entries(sec.counts));
     const total = entries.reduce((s,[,v])=>s+v, 0);
     if (!total) return '';
     const cards = entries.map(([sz,qty])=>`
-      <div class="sum-card"><div class="sz">${sz}</div><div class="ct">${qty} ${sec.unit||'ตัว'}</div></div>`).join('');
-    return `<div class="sum-section">
-      <div class="sum-title">${sec.title}</div>
-      <div class="sum-grid">${cards}</div>
-      <div class="sum-total">รวมทั้งหมด ${total} ${sec.unit||'ตัว'}</div>
+      <div class="sc"><div class="sc-sz">${sz}</div><div class="sc-ct">${qty}<span class="sc-unit"> ${sec.unit||'ตัว'}</span></div></div>`).join('');
+    return `<div class="ss">
+      <div class="ss-title">${sec.title}</div>
+      <div class="sc-grid">${cards}</div>
+      <div class="ss-total">รวมทั้งหมด <strong>${total}</strong> ${sec.unit||'ตัว'}</div>
     </div>`;
-  }).join('');
+  }).filter(Boolean).join('');
+
+  if (!sectionsHtml) return '';
+
+  return `<div class="sum-wrap">
+    <div class="sum-wrap-title">📋 สรุปยอดไซซ์</div>
+    ${sectionsHtml}
+  </div>`;
 }
 
 // helper: build village summary html
@@ -1656,6 +1709,10 @@ html, body { font-family: 'Sarabun', sans-serif; font-size: 16px; background: li
 .pay-radio-btn:hover { border-color: var(--pink2); background: var(--pink5); }
 .pay-radio-btn.active[data-val="paid"] { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; }
 .pay-radio-btn.active[data-val="later"] { background: #fff8e1; border-color: #ffc107; color: #e65100; }
+
+/* ---- CARD DELETE BUTTON ---- */
+.card-delete-btn { background: #ffebee; color: #c62828; border: none; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+.card-delete-btn:hover { background: #ffcdd2; transform: scale(1.1); }
 
 /* ---- QTY ROW (split polo/pant) ---- */
 .qty-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
