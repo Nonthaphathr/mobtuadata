@@ -1160,6 +1160,75 @@ window.exportExcel = function() {
   XLSX.writeFile(wb, 'ข้อมูลวันมอบตัวนักเรียน.xlsx');
 }
 
+// ---- EXPORT COOP EXCEL (ตามแบบฟอร์มสหกรณ์) ----
+window.exportCoopExcel = function() {
+  const XLSX = window.XLSX;
+  if (!XLSX) { showAlert('error', 'ไม่พบ SheetJS', 'กรุณารอโหลดหน้าใหม่'); return; }
+
+  const levelEl = document.getElementById('coopLevelFilter');
+  const filterLevel = levelEl ? levelEl.value : '';
+  const students = window._students.filter(s => {
+    if (filterLevel && s.level !== filterLevel) return false;
+    return window._coopData[s.id] !== undefined;
+  });
+
+  const header = [
+    'สมาชิกเลขที่',
+    'ชื่อ - สกุล',
+    'ระดับชั้น/ตำแหน่ง',
+    'จำนวนหุ้นที่สมัคร',
+    'รวมเงินหุ้น (หุ้นละ 20 บาท)',
+    'ค่าธรรมเนียม (บาท)',
+    'รวมเงินทั้งหมด',
+    'หมายเหตุ'
+  ];
+
+  const rows = students.map((s, i) => {
+    const d = window._coopData[s.id];
+    return [
+      i + 1,
+      `${s.prefix}${s.name} ${s.surname}`,
+      s.level,
+      d.shares,
+      d.shareTotal,
+      d.fee,
+      d.grandTotal,
+      ''
+    ];
+  });
+
+  // summary footer
+  const totalShares = students.reduce((sum, s) => sum + (window._coopData[s.id]?.shares || 0), 0);
+  const totalShareMoney = students.reduce((sum, s) => sum + (window._coopData[s.id]?.shareTotal || 0), 0);
+  const totalFee = students.reduce((sum, s) => sum + (window._coopData[s.id]?.fee || 0), 0);
+  const totalGrand = students.reduce((sum, s) => sum + (window._coopData[s.id]?.grandTotal || 0), 0);
+
+  rows.push([]); // blank row
+  rows.push(['', 'รวมทั้งหมด', `${students.length} คน`, totalShares, totalShareMoney, totalFee, totalGrand, '']);
+
+  const aoa = [header, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // column widths
+  ws['!cols'] = [
+    { wch: 12 }, // สมาชิกเลขที่
+    { wch: 26 }, // ชื่อ-สกุล
+    { wch: 18 }, // ระดับชั้น
+    { wch: 16 }, // จำนวนหุ้น
+    { wch: 22 }, // รวมเงินหุ้น
+    { wch: 18 }, // ค่าธรรมเนียม
+    { wch: 18 }, // รวมทั้งหมด
+    { wch: 20 }, // หมายเหตุ
+  ];
+
+  const wb = XLSX.utils.book_new();
+  const sheetName = 'สมาชิกสหกรณ์ 2569';
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+  const levelLabel = filterLevel ? `_${filterLevel}` : '';
+  XLSX.writeFile(wb, `สมาชิกสหกรณ์_2569${levelLabel}.xlsx`);
+}
+
 // ---- ADD STUDENT ----
 window.openAddStudent = function() {
   document.getElementById('addStudentModal').style.display = 'flex';
@@ -2056,6 +2125,7 @@ datalist option { font-family: 'Sarabun', sans-serif; }
         <option value="ม.4">ม.4</option>
       </select>
       <button class="btn-action btn-print" onclick="openPrintOptions('coop')"><i class="fa fa-print"></i> พิมพ์</button>
+      <button class="btn-action btn-export" onclick="exportCoopExcel()"><i class="fa fa-file-excel"></i> .xlsx</button>
     </div>
     <div id="coopListContainer"></div>
   </div>
